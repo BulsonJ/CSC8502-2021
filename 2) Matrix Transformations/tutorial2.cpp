@@ -21,6 +21,14 @@ int main() {
 			renderer.SwitchToOrthographic();
 		if (Window::GetKeyboard()->KeyDown(KEYBOARD_2))
 			renderer.SwitchToPerspective();
+		if (Window::GetKeyboard()->KeyDown(KEYBOARD_3)) {
+			renderer.SetFOV(45);
+			renderer.SwitchToPerspective();
+		}
+		if (Window::GetKeyboard()->KeyDown(KEYBOARD_4)) {
+			renderer.SetFOV(90);
+			renderer.SwitchToPerspective();
+		}
 
 		if (Window::GetKeyboard()->KeyDown(KEYBOARD_PLUS))  ++scale;
 		if (Window::GetKeyboard()->KeyDown(KEYBOARD_MINUS)) --scale;

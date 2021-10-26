@@ -47,16 +47,6 @@ void Mesh::Draw()	{
 		glDrawArrays(type, 0, numVertices);
 	}
 	glBindVertexArray(0);	
-
-
-	glBindBuffer(GL_ARRAY_BUFFER, bufferObject[1]);
-	Vector4* ptr = (Vector4*)glMapBuffer(GL_ARRAY_BUFFER, GL_READ_WRITE);
-
-	for (int i = 0; i <= numVertices; i++) {
-		ptr[i] = Vector4(rand() % 2, rand() % 2, rand() % 2,1.0f) * 0.7f;
-	}
-
-	glUnmapBuffer(GL_ARRAY_BUFFER);
 }
 
 void Mesh::DrawSubMesh(int i) {
