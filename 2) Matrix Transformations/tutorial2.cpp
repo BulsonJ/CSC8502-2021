@@ -56,6 +56,8 @@ int main() {
 		renderer.SetPosition(position);
 		renderer.RenderScene();
 		renderer.SwapBuffers();
+		renderer.UpdateScene(w.GetTimer()->GetTimeDeltaSeconds());
+		renderer.RenderScene();
 	}
 
 	return 0;

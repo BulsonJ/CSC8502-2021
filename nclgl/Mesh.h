@@ -84,6 +84,8 @@ public:
 	bool GetSubMesh(const std::string& name, const SubMesh* s) const;
 
 	static Mesh* GenerateTriangle();
+	GLuint GetBufferObject(int i) { return bufferObject[i]; };
+	int GetNumVertices() { return numVertices; };
 
 protected:
 	void	BufferData();

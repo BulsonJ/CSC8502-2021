@@ -37,6 +37,8 @@ int main() {
 		if (Window::GetKeyboard()->KeyDown(KEYBOARD_F5)) {
 			Shader::ReloadAllShaders();
 		}
+		renderer.UpdateScene(w.GetTimer()->GetTimeDeltaSeconds());
+		renderer.RenderScene();
 	}
 
 	return 0;
