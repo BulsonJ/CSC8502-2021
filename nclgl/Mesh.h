@@ -87,6 +87,8 @@ public:
 	GLuint GetBufferObject(int i) { return bufferObject[i]; };
 	int GetNumVertices() { return numVertices; };
 
+	static Mesh* GenerateQuad();
+
 protected:
 	void	BufferData();
 
