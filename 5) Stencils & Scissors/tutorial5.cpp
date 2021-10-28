@@ -1,6 +1,7 @@
 #include "../nclGL/window.h"
 #include "Renderer.h"
 #include <string>
+
 using std::string;
 int main() {	
 	Window w("Scissors and Stencils!", 1280, 720,false);	//This is all boring win32 window creation stuff!

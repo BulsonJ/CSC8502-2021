@@ -32,7 +32,6 @@
     <ClCompile Include="Window.cpp">
       <Filter>Windows and Input</Filter>
     </ClCompile>
-    <ClCompile Include="Camera.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common.h" />
@@ -76,7 +75,6 @@
     <ClInclude Include="InputDevice.h">
       <Filter>Windows and Input</Filter>
     </ClInclude>
-    <ClInclude Include="Camera.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="GLAD">
