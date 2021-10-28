@@ -59,7 +59,6 @@ void Renderer::RenderScene() {
 	glUniform1i(glGetUniformLocation(shader->GetProgram(),
 		"diffuseTex"), 0);
 
-
 	if (usingStencil) {
 		glEnable(GL_STENCIL_TEST);
 
