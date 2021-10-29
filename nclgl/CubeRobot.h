@@ -4,6 +4,7 @@
 class CubeRobot : public SceneNode {
 public:
 	CubeRobot(Mesh * cube);
+	//CubeRobot(Mesh* cube, Shader* shader);
 	~CubeRobot(void) {};
 	void Update(float dt) override;
 protected:

@@ -1,10 +1,10 @@
 #include "Renderer.h"
 
 Renderer::Renderer(Window & parent) : OGLRenderer(parent) {
-	cube = Mesh::LoadFromMeshFile(" OffsetCubeY .msh ");
+	cube = Mesh::LoadFromMeshFile("OffsetCubeY.msh");
 	camera = new Camera();
 
-	shader = new Shader(" SceneVertex . glsl ", " SceneFragment . glsl ");
+	shader = new Shader("SceneVertex.glsl", "SceneFragment.glsl");
 	if (!shader->LoadSuccess()) {
 		return;
 	}
@@ -13,8 +13,21 @@ Renderer::Renderer(Window & parent) : OGLRenderer(parent) {
 
 	camera->SetPosition(Vector3(0, 30, 175));
 
+	shader2 = new Shader("SceneVertex.glsl", "SceneFragment2.glsl");
+	if (!shader2->LoadSuccess()) {
+		return;
+	}
+
 	root = new SceneNode();
-	root->AddChild(new CubeRobot(cube));
+	//root->AddChild(new CubeRobot(cube));
+	for (int i = 1; i <= 10; ++i) {
+		CubeRobot* rob = new CubeRobot(cube);
+		rob->SetTransform(Matrix4::Translation(Vector3(i * 30, 0, 0)));
+		//SceneNode::SetScale(rob, i);
+		root->AddChild(rob);
+	}
+
+
 
 	glEnable(GL_DEPTH_TEST);
 	init = true;
@@ -23,8 +36,12 @@ Renderer::Renderer(Window & parent) : OGLRenderer(parent) {
 Renderer::~Renderer(void) {
 	delete root;
 	delete shader;
+	delete shader2;
 	delete camera;
-	delete cube;}void Renderer::UpdateScene(float dt) {
+	delete cube;
+}
+
+void Renderer::UpdateScene(float dt) {
 	camera->UpdateCamera(dt);
 	viewMatrix = camera->BuildViewMatrix();
 	root->Update(dt);
@@ -37,27 +54,35 @@ void Renderer::RenderScene() {
 	UpdateShaderMatrices();
 	
 	glUniform1i(glGetUniformLocation(shader->GetProgram(),
-			" diffuseTex "), 1);
+			"diffuseTex"), 1);
 
-	DrawNode(root);}void Renderer::DrawNode(SceneNode* n) {
+
+
+	DrawNode(root);
+}
+
+void Renderer::DrawNode(SceneNode* n) {
 	if (n->GetMesh()) {
 		Matrix4 model = n->GetWorldTransform() *
 			Matrix4::Scale(n->GetModelScale());
+
 		glUniformMatrix4fv(
 		glGetUniformLocation(shader->GetProgram(),
-				" modelMatrix "), 1, false, model.values);
+		"modelMatrix"), 1, false, model.values);
 		
 		glUniform4fv(glGetUniformLocation(shader->GetProgram(),
-				 " nodeColour "), 1, (float*)&n->GetColour());
+				 "nodeColour"), 1, (float*)&n->GetColour());
 		
 		glUniform1i(glGetUniformLocation(shader->GetProgram(),
-			" useTexture "), 0); // Next tutorial ;)
-		n-> Draw(*this);
-				
+				"useTexture"), 0); // Next tutorial ;)
+		n->Draw(*this);		
 	}
 	
 	for (vector < SceneNode* >::const_iterator
 		i = n->GetChildIteratorStart();
 		i != n->GetChildIteratorEnd(); ++i) {
-	DrawNode(*i);
-	}}
+		DrawNode(*i);
+	}
+}
+
+

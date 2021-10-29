@@ -7,7 +7,8 @@
 
 class SceneNode {
 public:
-	SceneNode(Mesh * m = NULL, Vector4 colour = Vector4(1, 1, 1, 1));
+	SceneNode(Mesh* m = NULL, Vector4 colour = Vector4(1, 1, 1, 1));
+	SceneNode(Mesh* m, Shader* shader, Vector4 colour);
 	~SceneNode(void);
 
 	void SetTransform(const Matrix4 & matrix) { transform = matrix; }
@@ -19,28 +20,33 @@ public:
 	
 	Vector3 GetModelScale() const { return modelScale; }
 	void SetModelScale(Vector3 s) { modelScale = s; }
+	static void SetScale(SceneNode* n, int scale);
 	
 	Mesh * GetMesh() const { return mesh; }
-	void SetMesh(Mesh * m) { mesh = m; }
+	void SetMesh(Mesh* m) { mesh = m; }
 	
-	void AddChild(SceneNode * s);
+	void AddChild(SceneNode* s);
+	void RemoveChild(SceneNode* s);
 	virtual void Update(float dt);
-	virtual void Draw(const OGLRenderer & r);
+	virtual void Draw(const OGLRenderer &r);
 	
-	std::vector < SceneNode* >::const_iterator GetChildIteratorStart() {
+	std::vector <SceneNode*>::const_iterator GetChildIteratorStart() {
 		return children.begin();
 	}
 
-	std::vector < SceneNode* >::const_iterator GetChildIteratorEnd() {
+	std::vector <SceneNode*>::const_iterator GetChildIteratorEnd() {
 		return children.end();
 	}
 
 protected:
 	SceneNode* parent;
 	Mesh* mesh;
+	Shader* shader;
 	Matrix4 worldTransform;
 	Matrix4 transform;
 	Vector3 modelScale;
 	Vector4 colour;
-	std::vector<SceneNode*> children;};
+	std::vector<SceneNode*> children;
+};
+
 

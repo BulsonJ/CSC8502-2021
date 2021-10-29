@@ -18,4 +18,7 @@ protected:
 	SceneNode* root;
 	Camera* camera;
 	Mesh* cube;
-	Shader* shader;};
+	Shader* shader;
+	Shader* shader2;
+};
+
