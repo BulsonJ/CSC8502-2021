@@ -18,6 +18,22 @@ public:
 		this ->position = position;
 	}
 
+	Camera(float  pitch, float yaw, float roll, Vector3  position) {
+		this->pitch = pitch;
+		this->yaw = yaw;
+		this->roll = roll;
+		this->camera_speed = 30.0f;
+		this->position = position;
+	}
+
+	Camera(float  pitch, float yaw, Vector3  position) {
+		this->pitch = pitch;
+		this->yaw = yaw;
+		this->roll = 0.0f;
+		this->camera_speed = 30.0f;
+		this->position = position;
+	}
+
 	~Camera(void ){};
 
 	void  UpdateCamera(float dt = 1.0f);
