@@ -2,6 +2,7 @@
 #include "../nclgl/Light.h"
 #include "../nclgl/Camera.h"
 #include "../nclgl/HeightMap.h"
+#include "../nclgl/SceneNode.h"
 
 Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
 	camera = new Camera(0.0f, 0.0f, (Vector3(0, 100, 750.0f)));
@@ -24,6 +25,11 @@ Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
 		return;
 	}
 
+	root = new SceneNode();
+	
+	SceneNode* s = new SceneNode();
+	s->SetMesh(heightMap);
+
 	SetTextureRepeating(heightMapTexture, true);
 	SetTextureRepeating(heightMapBumpmap, true); 
 
@@ -40,6 +46,7 @@ Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
 	glEnable(GL_DEPTH_TEST);
 	init = true;
 }
+
 Renderer::~Renderer(void)	{
 	delete camera;
 	delete heightMap;

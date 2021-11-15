@@ -14,7 +14,6 @@ public:
 	 void RenderScene()				override;
 	 void UpdateScene(float msec)	override;
 
-	 void DrawWater();
 protected:
 	Camera* camera;
 	Frustum frameFrustum;
@@ -26,5 +25,7 @@ protected:
 	HeightMap* heightMap;
 	GLuint heightMapTexture;
 	GLuint heightMapBumpmap;
+
+	SceneNode* root;
 
 };
