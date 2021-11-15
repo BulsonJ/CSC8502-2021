@@ -159,8 +159,6 @@ void Renderer::DrawWater() {
 	glUniform1f(glGetUniformLocation(
 		reflectShader->GetProgram(), "time"), time);
 
-	
-	
 	UpdateShaderMatrices();
 	// SetShaderLight (* light); //No lighting in this shader!
 	quad->Draw();

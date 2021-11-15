@@ -25,11 +25,10 @@ void main(void) {
 
     OUT.normal = normalize(normalMatrix * normalize(normal ));
 
-    vec3 offset;
-    offset.xy = vec2(0,0);
-    offset.z = -sin(time) * 0.05f ;
+    vec3 offset = vec3(0,0,0);
+    //offset.z = -sin(time) * 0.05f ;
 
-    vec4 worldPos = (modelMatrix * vec4((position),1)) + (modelMatrix*vec4(offset,0));
+    vec4 worldPos = (modelMatrix * vec4((position + offset),1));
 
 
     OUT.worldPos = worldPos.xyz;
