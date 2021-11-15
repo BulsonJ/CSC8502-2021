@@ -82,6 +82,8 @@ protected:
 
 	void SetTextureRepeating(GLuint target, bool state);
 
+	void SetShaderLight(const Light& l);
+
 private:
 	Shader* currentShader;	
 	HDC		deviceContext;	//...Device context?

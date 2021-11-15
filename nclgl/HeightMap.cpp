@@ -40,6 +40,7 @@ HeightMap :: HeightMap(const  std:: string& name) {
 			indices[i++] = d;
 		}
 	}
+	GenerateNormals();
 	BufferData();
 	heightmapSize.x = vertexScale.x * (iWidth - 1);
 	heightmapSize.y = vertexScale.y * 255.0f;//each  height  is a byte!
