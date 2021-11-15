@@ -7,7 +7,7 @@ public:
 		yaw = 0.0f;
 		pitch = 0.0f;
 		roll = 0.0f;
-		camera_speed = 30.0f;
+		camera_speed = 100.0f;
 	};
 
 	Camera(float  pitch , float yaw , float roll, float camera_speed, Vector3  position ){
@@ -30,7 +30,7 @@ public:
 		this->pitch = pitch;
 		this->yaw = yaw;
 		this->roll = 0.0f;
-		this->camera_speed = 30.0f;
+		this->camera_speed = 100.0f;
 		this->position = position;
 	}
 
