@@ -48,6 +48,10 @@ public:
 	void      SetCameraDistance(float f) { distanceFromCamera = f; }
 	void      SetTexture(GLuint  tex) { texture = tex; }
 	GLuint    GetTexture()  const { return  texture; }
+
+	void      SetBump(GLuint  bump) { bumpTexture = bump; }
+	GLuint    GetBump()  const { return  bumpTexture; }
+
 	static  bool  CompareByCameraDistance(SceneNode * a, SceneNode * b) {
 		return (a->distanceFromCamera < 
 			b->distanceFromCamera) ? true : false;
@@ -59,6 +63,7 @@ protected:
 	Mesh* mesh;
 	Shader* shader;
 	GLuint texture;
+	GLuint bumpTexture;
 
 	Matrix4 worldTransform;
 	Matrix4 transform;

@@ -1,42 +1,56 @@
 #include "Renderer.h"
+#include "../nclgl/SceneNode.h"
 #include "../nclgl/CubeRobot.h"
 #include "../nclgl/Camera.h"
+#include "../nclgl/HeightMap.h"
+#include "../nclgl/Light.h"
 #include  <algorithm>                //For  std::sort ...
 Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
-	camera = new  Camera(0.0f, 0.0f, (Vector3(0, 100, 750.0f)));
 	quad = Mesh::GenerateQuad();
-	cube = Mesh::LoadFromMeshFile("OffsetCubeY.msh");
-	shader = new  Shader("SceneVertex.glsl", "SceneFragment.glsl");
-	shader2 = new  Shader("SceneVertex.glsl", "SceneFragment2.glsl");
-	texture = SOIL_load_OGL_texture(TEXTUREDIR"stainedglass.tga",
-		SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, 0);
 
-	if (!shader->LoadSuccess() || !texture) {
-		return;
+	shaders.emplace_back(new Shader("bumpVertex.glsl", "bumpFragment.glsl"));
+
+	textures.emplace_back(SOIL_load_OGL_texture(
+		TEXTUREDIR"Barren Reds.JPG", SOIL_LOAD_AUTO,
+		SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS));
+
+	textures.emplace_back(SOIL_load_OGL_texture(
+		TEXTUREDIR"Barren RedsDOT3.JPG", SOIL_LOAD_AUTO,
+		SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS));
+
+	for (auto it = shaders.begin(); it != shaders.end(); it++) {
+		if (!(*it)->LoadSuccess()) return;
 	}
-
-	root = new  SceneNode();
-	for (int i = 0; i < 5; ++i) {
-		SceneNode* s = new  SceneNode();
-		s->SetColour(Vector4(1.0f, 1.0f, 1.0f, 0.5f));
-		s->SetTransform(Matrix4::Translation(
-			Vector3(0, 100.0f, -300.0f + 100.0f + 100 * i)));
-		s->SetModelScale(Vector3(100.0f, 100.0f, 100.0f));
-		s->SetBoundingRadius(100.0f);
-		s->SetMesh(quad);
-		s->SetTexture(texture);
-		s->SetShader(shader);
-		root->AddChild(s);
+	for (auto it = textures.begin(); it != textures.end(); it++) {
+		if (!(*it)) return;
 	}
-	CubeRobot* cubeRobot = new CubeRobot(cube);
-	cubeRobot->SetShaderOverall(cubeRobot, shader2);
-	root->AddChild(cubeRobot);
+	SetTextureRepeating(textures[0], true);
+	SetTextureRepeating(textures[1], true);
 
-	projMatrix = Matrix4::Perspective(1.0f, 10000.0f,
+	root = new SceneNode();
+	SceneNode* heightMap = new SceneNode();
+	HeightMap* heightMapMesh = new HeightMap(TEXTUREDIR"noise.png");
+	heightMap->SetMesh(heightMapMesh);
+	heightMap->SetShaderOverall(heightMap,shaders[0]);
+	heightMap->SetBump(textures[1]);
+	root->AddChild(heightMap);
+
+	Vector3 heightmapSize = heightMapMesh->GetHeightmapSize();
+
+	camera = new Camera(-45.0f, 0.0f,
+		heightmapSize * Vector3(0.5f, 5.0f, 0.5f));
+	light = new Light(heightmapSize * Vector3(0.5f, 1.5f, 0.5f),
+		Vector4(1, 1, 1, 1), heightmapSize.x);
+
+
+	projMatrix = Matrix4::Perspective(1.0f, 15000.0f,
 		(float)width / (float)height, 45.0f);
+
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
+	sceneTime = 0.0f;
 	init = true;
 }
 
@@ -44,22 +58,28 @@ Renderer::~Renderer(void) {
 	delete  root;
 	delete  quad;
 	delete  camera;
-	delete  cube;
-	delete  shader;
-	glDeleteTextures(1, &texture);
+	for (auto it = shaders.begin(); it != shaders.end(); it++) {
+		delete* it;
+	}
+	for (auto it = textures.begin(); it != textures.end(); it++) {
+		glDeleteTextures(1, &(*it));
+	}
 }
 
 void Renderer::UpdateScene(float dt) {
 	camera->UpdateCamera(dt);
+	sceneTime += dt;
+
 	viewMatrix = camera->BuildViewMatrix();
 	frameFrustum.FromMatrix(projMatrix * viewMatrix);
+
 	root->Update(dt);
 }
 
 void   Renderer::BuildNodeLists(SceneNode* from) {
-	if (frameFrustum.InsideFrustum(*from)) {
-		Vector3  dir = from->GetWorldTransform().GetPositionVector() -
-			camera->GetPosition();
+	//if (frameFrustum.InsideFrustum(*from)) {
+	if (true) {
+		Vector3  dir = from->GetWorldTransform().GetPositionVector() - camera->GetPosition();
 		from->SetCameraDistance(Vector3::Dot(dir, dir));
 		if (from->GetColour().w < 1.0f) {
 			transparentNodeList.push_back(from);
@@ -100,9 +120,7 @@ void   Renderer::DrawNode(SceneNode* n) {
 			Shader* shader = (Shader*)(n->GetShader());
 
 			BindShader(shader);
-			UpdateShaderMatrices();
-			glUniform1i(glGetUniformLocation(shader->GetProgram(), "diffuseTex"), 0);
-
+			SetShaderLight(*light);
 
 			Matrix4  model = n->GetWorldTransform() * Matrix4::Scale(n->GetModelScale());
 			glUniformMatrix4fv(glGetUniformLocation(shader->GetProgram(), "modelMatrix"), 1, false, model.values);
@@ -116,6 +134,25 @@ void   Renderer::DrawNode(SceneNode* n) {
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, texture);
 			glUniform1i(glGetUniformLocation(shader->GetProgram(), "useTexture"), texture);
+
+			// Light
+			glUniform3fv(glGetUniformLocation(shader->GetProgram(), "cameraPos"), 1, (float*)& camera->GetPosition());
+			if (n->GetBump()) {
+				glUniform1i(glGetUniformLocation(shader->GetProgram(), "bumpTex"), 1);
+				GLuint bumptexture = n->GetBump();
+				glActiveTexture(GL_TEXTURE1);
+				glBindTexture(GL_TEXTURE_2D, bumptexture);
+			}
+
+			// Custom uniforms
+			glUniform1f(glGetUniformLocation(shader->GetProgram(), "sceneTime"), sceneTime);
+
+
+			modelMatrix.ToIdentity(); //New!
+			textureMatrix.ToIdentity(); //New!
+
+			UpdateShaderMatrices();
+
 			n->Draw(*this);
 		}
 	}
@@ -129,7 +166,7 @@ void  Renderer::RenderScene() {
 	ClearNodeLists();
 }
 
-void   Renderer::ClearNodeLists() {
+void Renderer::ClearNodeLists() {
 	transparentNodeList.clear();
 	nodeList.clear();
 }

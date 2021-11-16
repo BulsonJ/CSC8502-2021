@@ -1,6 +1,5 @@
 #pragma  once
 #include "../nclgl/OGLRenderer.h"
-#include "../nclgl/SceneNode.h"
 #include "../nclgl/Frustum.h"
 
 class  Camera;
@@ -20,16 +19,19 @@ protected:
 	void          DrawNodes();
 	void          DrawNode(SceneNode* n);
 
+	void AddHeightMap();
+
 	vector <SceneNode*> transparentNodeList;
 	vector <SceneNode*> nodeList;
 
 	SceneNode* root;
 	Camera* camera;
 	Frustum frameFrustum;
+	float sceneTime;
+	Light* light;
 
 	Mesh* quad;
 	Mesh* cube;
-	Shader* shader;
-	Shader* shader2;
-	GLuint        texture;
+	vector<Shader*> shaders;
+	vector<GLuint> textures;
 };
