@@ -52,6 +52,12 @@ public:
 	void      SetBump(GLuint  bump) { bumpTexture = bump; }
 	GLuint    GetBump()  const { return  bumpTexture; }
 
+	void SetUseLight(bool use) { useLight = use; }
+	bool GetUseLight() { return useLight; }
+
+	void SetModifyModelMatrix(bool mod) { modifyModelMatrix = mod; }
+	bool GetModifyModelMatrix() { return modifyModelMatrix; }
+
 	static  bool  CompareByCameraDistance(SceneNode * a, SceneNode * b) {
 		return (a->distanceFromCamera < 
 			b->distanceFromCamera) ? true : false;
@@ -72,6 +78,9 @@ protected:
 	std::vector<SceneNode*> children;
 	float distanceFromCamera;
 	float boundingRadius;
+
+	bool useLight;
+	bool modifyModelMatrix;
 };
 
 

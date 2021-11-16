@@ -8,7 +8,11 @@
 Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	quad = Mesh::GenerateQuad();
 
+	// Load in shaders and textures
+
 	shaders.emplace_back(new Shader("bumpVertex.glsl", "bumpFragment.glsl"));
+	shaders.emplace_back(new Shader("reflectVertex.glsl", "reflectFragment.glsl"));
+	shaders.emplace_back(new  Shader("SceneVertex.glsl", "SceneFragment2.glsl"));
 
 	textures.emplace_back(SOIL_load_OGL_texture(
 		TEXTUREDIR"Barren Reds.JPG", SOIL_LOAD_AUTO,
@@ -18,24 +22,46 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 		TEXTUREDIR"Barren RedsDOT3.JPG", SOIL_LOAD_AUTO,
 		SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS));
 
+	textures.emplace_back(SOIL_load_OGL_texture(
+		TEXTUREDIR"water.TGA", SOIL_LOAD_AUTO,
+		SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS));
+
 	for (auto it = shaders.begin(); it != shaders.end(); it++) {
 		if (!(*it)->LoadSuccess()) return;
 	}
 	for (auto it = textures.begin(); it != textures.end(); it++) {
 		if (!(*it)) return;
 	}
+
+	
 	SetTextureRepeating(textures[0], true);
 	SetTextureRepeating(textures[1], true);
+	SetTextureRepeating(textures[2], true);
 
 	root = new SceneNode();
+
+	// Create height map
 	SceneNode* heightMap = new SceneNode();
 	HeightMap* heightMapMesh = new HeightMap(TEXTUREDIR"noise.png");
 	heightMap->SetMesh(heightMapMesh);
 	heightMap->SetShaderOverall(heightMap,shaders[0]);
+	heightMap->SetTexture(textures[0]);
 	heightMap->SetBump(textures[1]);
 	root->AddChild(heightMap);
 
-	Vector3 heightmapSize = heightMapMesh->GetHeightmapSize();
+	heightmapSize = heightMapMesh->GetHeightmapSize();
+
+	// Create water
+	SceneNode* water = new SceneNode();
+	water->SetMesh(Mesh::GenerateQuad());
+	water->SetTransform(Matrix4::Translation(heightmapSize * 0.5f) *
+		Matrix4::Scale(heightmapSize * 0.5f) *
+		Matrix4::Rotation(90, Vector3(1, 0, 0)));
+	water->SetTexture(textures[2]);
+	water->SetShader(shaders[1]);
+	water->SetUseLight(false);
+	root->AddChild(water);
+
 
 	camera = new Camera(-45.0f, 0.0f,
 		heightmapSize * Vector3(0.5f, 5.0f, 0.5f));
@@ -56,7 +82,6 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 Renderer::~Renderer(void) {
 	delete  root;
-	delete  quad;
 	delete  camera;
 	for (auto it = shaders.begin(); it != shaders.end(); it++) {
 		delete* it;
@@ -120,36 +145,46 @@ void   Renderer::DrawNode(SceneNode* n) {
 			Shader* shader = (Shader*)(n->GetShader());
 
 			BindShader(shader);
-			SetShaderLight(*light);
+			if (n->GetUseLight()) {
+				SetShaderLight(*light);
+			}
 
-			Matrix4  model = n->GetWorldTransform() * Matrix4::Scale(n->GetModelScale());
-			glUniformMatrix4fv(glGetUniformLocation(shader->GetProgram(), "modelMatrix"), 1, false, model.values);
-			glUniformMatrix4fv(glGetUniformLocation(shader->GetProgram(), "viewMatrix"), 1, false, viewMatrix.values);
-			glUniformMatrix4fv(glGetUniformLocation(shader->GetProgram(), "projMatrix"), 1, false, projMatrix.values);
-			glUniform4fv(glGetUniformLocation(shader->GetProgram(), "nodeColour"), 1, (float*)& n->GetColour());
+			//glUniform4fv(glGetUniformLocation(shader->GetProgram(), "nodeColour"), 1, (float*)& n->GetColour());
 
 			// Get texture of scene node, if scene node has texture it will be bound and uniform set to 1,
 			// otherwise set to 0
-			GLuint texture = n->GetTexture();
-			glActiveTexture(GL_TEXTURE0);
-			glBindTexture(GL_TEXTURE_2D, texture);
-			glUniform1i(glGetUniformLocation(shader->GetProgram(), "useTexture"), texture);
+			if (n->GetTexture()) {
+				GLuint texture = n->GetTexture();
+				glUniform1i(glGetUniformLocation(shader->GetProgram(), "diffuseTex"), 0);
+				glActiveTexture(GL_TEXTURE0);
+				glBindTexture(GL_TEXTURE_2D, texture);
+
+				glUniform1i(glGetUniformLocation(shader->GetProgram(), "useTexture"), 1);
+			}
+			else {
+				glUniform1i(glGetUniformLocation(shader->GetProgram(), "useTexture"), 0);
+			}
 
 			// Light
 			glUniform3fv(glGetUniformLocation(shader->GetProgram(), "cameraPos"), 1, (float*)& camera->GetPosition());
 			if (n->GetBump()) {
-				glUniform1i(glGetUniformLocation(shader->GetProgram(), "bumpTex"), 1);
 				GLuint bumptexture = n->GetBump();
-				glActiveTexture(GL_TEXTURE1);
+				glUniform1i(glGetUniformLocation(shader->GetProgram(), "bumpTex"), 2);
+				glActiveTexture(GL_TEXTURE2);
 				glBindTexture(GL_TEXTURE_2D, bumptexture);
 			}
 
 			// Custom uniforms
 			glUniform1f(glGetUniformLocation(shader->GetProgram(), "sceneTime"), sceneTime);
 
-
-			modelMatrix.ToIdentity(); //New!
-			textureMatrix.ToIdentity(); //New!
+			if (n->GetModifyModelMatrix()) {
+				modelMatrix = n->GetWorldTransform() * Matrix4::Scale(n->GetModelScale());
+			}
+			else {
+				// Add custom for scene node
+				modelMatrix.ToIdentity(); //New!
+				textureMatrix.ToIdentity(); //New!
+			}
 
 			UpdateShaderMatrices();
 

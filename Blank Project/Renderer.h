@@ -34,4 +34,5 @@ protected:
 	Mesh* cube;
 	vector<Shader*> shaders;
 	vector<GLuint> textures;
+	Vector3 heightmapSize;
 };

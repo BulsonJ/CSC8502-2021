@@ -5,7 +5,7 @@ uniform mat4 viewMatrix;
 uniform mat4 projMatrix;
 uniform mat4 textureMatrix;
 
-uniform float time;
+uniform float sceneTime;
 
 in vec3 position;
 in vec3 normal;
