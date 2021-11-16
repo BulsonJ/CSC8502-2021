@@ -26,7 +26,7 @@ void main(void) {
     OUT.normal = normalize(normalMatrix * normalize(normal ));
 
     vec3 offset = vec3(0,0,0);
-    //offset.z = -sin(time) * 0.05f ;
+    offset.z = -sin(sceneTime) * 0.05f ;
 
     vec4 worldPos = (modelMatrix * vec4((position + offset),1));
 

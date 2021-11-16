@@ -12,7 +12,6 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 	shaders.emplace_back(new Shader("bumpVertex.glsl", "bumpFragment.glsl"));
 	shaders.emplace_back(new Shader("reflectVertex.glsl", "reflectFragment.glsl"));
-	shaders.emplace_back(new  Shader("SceneVertex.glsl", "SceneFragment2.glsl"));
 
 	textures.emplace_back(SOIL_load_OGL_texture(
 		TEXTUREDIR"Barren Reds.JPG", SOIL_LOAD_AUTO,
@@ -47,8 +46,8 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	heightMap->SetShaderOverall(heightMap,shaders[0]);
 	heightMap->SetTexture(textures[0]);
 	heightMap->SetBump(textures[1]);
+	heightMap->SetModelScale(Vector3(1, 1, 1));
 	root->AddChild(heightMap);
-
 	heightmapSize = heightMapMesh->GetHeightmapSize();
 
 	// Create water
@@ -60,6 +59,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	water->SetTexture(textures[2]);
 	water->SetShader(shaders[1]);
 	water->SetUseLight(false);
+	water->SetColour(Vector4(1.0, 1.0, 1.0, 0.5));
 	root->AddChild(water);
 
 
