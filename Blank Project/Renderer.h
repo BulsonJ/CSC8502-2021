@@ -1,31 +1,35 @@
-#pragma once
-#include "../NCLGL/OGLRenderer.h"
+#pragma  once
+#include "../nclgl/OGLRenderer.h"
+#include "../nclgl/SceneNode.h"
 #include "../nclgl/Frustum.h"
 
-class Camera;
-class Light; // Predeclare our new class type ...
-class Shader;
-class HeightMap;
-
-class Renderer : public OGLRenderer	{
+class  Camera;
+class  SceneNode;
+class  Mesh;
+class  Shader;
+class  Renderer : public  OGLRenderer {
 public:
-	Renderer(Window &parent);
-	 ~Renderer(void);
-	 void RenderScene()				override;
-	 void UpdateScene(float msec)	override;
-
+	Renderer(Window& parent);
+	~Renderer(void);
+	void  UpdateScene(float  msec) override;
+	void  RenderScene()  override;
 protected:
-	Camera* camera;
-	Frustum frameFrustum;
-	float sceneTime;
+	void          BuildNodeLists(SceneNode* from);
+	void          SortNodeLists();
+	void          ClearNodeLists();
+	void          DrawNodes();
+	void          DrawNode(SceneNode* n);
 
-	Light* light;
-	Shader* heightMapShader;
-
-	HeightMap* heightMap;
-	GLuint heightMapTexture;
-	GLuint heightMapBumpmap;
+	vector <SceneNode*> transparentNodeList;
+	vector <SceneNode*> nodeList;
 
 	SceneNode* root;
+	Camera* camera;
+	Frustum frameFrustum;
 
+	Mesh* quad;
+	Mesh* cube;
+	Shader* shader;
+	Shader* shader2;
+	GLuint        texture;
 };

@@ -1,7 +1,7 @@
 #include "Renderer.h"
 #include "../nclgl/CubeRobot.h"
 #include "../nclgl/Camera.h"
-#include  <algorithm >                //For  std::sort ...
+#include  <algorithm>                //For  std::sort ...
 Renderer::Renderer(Window &parent) : OGLRenderer(parent) {
 	camera = new  Camera (0.0f, 0.0f, (Vector3 (0 ,100 ,750.0f)));
 	quad = Mesh:: GenerateQuad();

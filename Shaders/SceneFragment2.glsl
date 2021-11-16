@@ -11,8 +11,9 @@ in Vertex {
 out vec4 fragColour;
 
 void main ( void ) {
-	fragColour = IN.colour * 0;
+	fragColour = IN.colour;
 	if(useTexture > 0) {
 		fragColour *= texture(diffuseTex, IN.texCoord);
 	}
+	fragColour = vec4(0.0,0.0,0.0,1.0);
 }

@@ -2,7 +2,7 @@
 
 SceneNode::SceneNode(Mesh* mesh, Vector4 colour) {
 	this-> mesh = mesh;
-	this->shader = NULL;
+	this-> shader = NULL;
 	this-> colour = colour;
 	parent = NULL;
 	modelScale = Vector3(1, 1, 1);
@@ -61,5 +61,17 @@ void SceneNode::SetScale(SceneNode* n, int scale) {
 		i = n->GetChildIteratorStart();
 		i != n->GetChildIteratorEnd(); ++i) {
 		SetScale(*i, scale);
+	}
+}
+
+void SceneNode::SetShaderOverall(SceneNode* n, Shader* shader) {
+	if (n->GetMesh()) {
+		n->SetShader(shader);
+	}
+
+	for (vector < SceneNode* >::const_iterator
+		i = n->GetChildIteratorStart();
+		i != n->GetChildIteratorEnd(); ++i) {
+		SetShaderOverall(*i, shader);
 	}
 }
