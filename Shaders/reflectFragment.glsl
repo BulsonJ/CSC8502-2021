@@ -22,5 +22,4 @@ void main(void) {
     vec4 reflectTex = texture(cubeTex ,reflectDir );
 
     fragColour = reflectTex + (diffuse * 0.25f);
-    fragColour = vec4(1.0,1.0,1.0,0.5);
 }

@@ -52,14 +52,13 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 	// Create water
 	SceneNode* water = new SceneNode();
-	water->SetMesh(Mesh::GenerateQuad());
-	water->SetTransform(Matrix4::Translation(heightmapSize * 0.5f) *
-		Matrix4::Scale(heightmapSize * 0.5f) *
-		Matrix4::Rotation(90, Vector3(1, 0, 0)));
+	HeightMap* waterMapMesh = new HeightMap();
+	water->SetMesh(waterMapMesh);
 	water->SetTexture(textures[2]);
-	water->SetShader(shaders[1]);
+	water->SetShaderOverall(water, shaders[1]);
 	water->SetUseLight(false);
 	water->SetColour(Vector4(1.0, 1.0, 1.0, 0.5));
+	water->SetTransform(Matrix4::Translation(Vector3(0, 150, 0)));
 	root->AddChild(water);
 
 
@@ -138,18 +137,13 @@ void   Renderer::DrawNodes() {
 	}
 }
 
-void   Renderer::DrawNode(SceneNode* n) {
+void Renderer::DrawNode(SceneNode* n) {
 
 	if (n->GetMesh()) {
 		if (n->GetShader()) {
 			Shader* shader = (Shader*)(n->GetShader());
 
 			BindShader(shader);
-			if (n->GetUseLight()) {
-				SetShaderLight(*light);
-			}
-
-			//glUniform4fv(glGetUniformLocation(shader->GetProgram(), "nodeColour"), 1, (float*)& n->GetColour());
 
 			// Get texture of scene node, if scene node has texture it will be bound and uniform set to 1,
 			// otherwise set to 0
@@ -165,14 +159,22 @@ void   Renderer::DrawNode(SceneNode* n) {
 				glUniform1i(glGetUniformLocation(shader->GetProgram(), "useTexture"), 0);
 			}
 
+
 			// Light
-			glUniform3fv(glGetUniformLocation(shader->GetProgram(), "cameraPos"), 1, (float*)& camera->GetPosition());
+			if (n->GetUseLight()) {
+				SetShaderLight(*light);
+			}
+
 			if (n->GetBump()) {
 				GLuint bumptexture = n->GetBump();
 				glUniform1i(glGetUniformLocation(shader->GetProgram(), "bumpTex"), 2);
 				glActiveTexture(GL_TEXTURE2);
 				glBindTexture(GL_TEXTURE_2D, bumptexture);
 			}
+
+			glUniform3fv(glGetUniformLocation(shader->GetProgram(), "cameraPos"), 1, (float*)& camera->GetPosition());
+
+			glUniform4fv(glGetUniformLocation(shader->GetProgram(), "nodeColour"), 1, (float*)& n->GetColour());
 
 			// Custom uniforms
 			glUniform1f(glGetUniformLocation(shader->GetProgram(), "sceneTime"), sceneTime);
@@ -181,7 +183,6 @@ void   Renderer::DrawNode(SceneNode* n) {
 				modelMatrix = n->GetWorldTransform() * Matrix4::Scale(n->GetModelScale());
 			}
 			else {
-				// Add custom for scene node
 				modelMatrix.ToIdentity(); //New!
 				textureMatrix.ToIdentity(); //New!
 			}

@@ -19,17 +19,20 @@ out Vertex {
 } OUT;
 
 void main(void) {
-    mat3 normalMatrix = transpose(inverse(mat3(modelMatrix )));
-
-    OUT.texCoord = (textureMatrix * vec4(texCoord , 0.0, 1.0)). xy;
-
-    OUT.normal = normalize(normalMatrix * normalize(normal ));
+    float amplitude = 10.0f;
+    float waveLength = 400.0f;
+    float speed = 100.0f;
 
     vec3 offset = vec3(0,0,0);
-    offset.z = -sin(sceneTime) * 0.05f ;
+    float k = 2 * 3.142 / waveLength; // last float wavelength
+    float f = k * (position.x - speed * sceneTime);
+    offset.y = amplitude * sin(f) ; // amplitude first float
+
+    mat3 normalMatrix = transpose(inverse(mat3(modelMatrix )));
+    OUT.texCoord = (textureMatrix * vec4(texCoord , 0.0, 1.0)). xy;
+    OUT.normal = normalize(normalMatrix * normalize(normal));
 
     vec4 worldPos = (modelMatrix * vec4((position + offset),1));
-
 
     OUT.worldPos = worldPos.xyz;
 
