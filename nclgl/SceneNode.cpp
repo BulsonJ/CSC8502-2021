@@ -11,7 +11,7 @@ SceneNode::SceneNode(Mesh* mesh, Vector4 colour) {
 	texture = 0;
 	bumpTexture = 0;
 	cubeMap = 0;
-	useLight = true;
+	useDepth = true;
 }
 
 

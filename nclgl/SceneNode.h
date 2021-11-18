@@ -55,8 +55,8 @@ public:
 	void      SetCubeMap(GLuint  cub) { cubeMap = cub; }
 	GLuint    GetCubeMap()  const { return  cubeMap; }
 
-	void SetUseLight(bool use) { useLight = use; }
-	bool GetUseLight() { return useLight; }
+	void SetDepthMask(bool use) { useDepth = use; }
+	bool GetUseDepthMask() { return useDepth; }
 
 	static  bool  CompareByCameraDistance(SceneNode * a, SceneNode * b) {
 		return (a->distanceFromCamera < 
@@ -80,7 +80,7 @@ protected:
 	float distanceFromCamera;
 	float boundingRadius;
 
-	bool useLight;
+	bool useDepth;
 };
 
 

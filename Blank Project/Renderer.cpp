@@ -70,7 +70,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	water->SetMesh(waterMapMesh);
 	water->SetTexture(textures[3]);
 	water->SetShaderOverall(water, shaders[2]);
-	water->SetUseLight(true);
+	water->SetDepthMask(false);
 	water->SetColour(Vector4(1.0, 1.0, 1.0, 0.5));
 	water->SetTransform(Matrix4::Translation(Vector3(0, 150, 0)));
 	water->SetCubeMap(textures[2]);
@@ -158,7 +158,7 @@ void Renderer::DrawNode(SceneNode* n) {
 	if (n->GetMesh()) {
 		if (n->GetShader()) {
 			Shader* shader = (Shader*)(n->GetShader());
-
+			n->GetUseDepthMask() ? glDepthMask(GL_TRUE) : glDepthMask(GL_FALSE);
 			BindShader(shader);
 
 			// Get texture of scene node, if scene node has texture it will be bound and uniform set to 1,
@@ -175,11 +175,7 @@ void Renderer::DrawNode(SceneNode* n) {
 				glUniform1i(glGetUniformLocation(shader->GetProgram(), "useTexture"), 0);
 			}
 
-
-			// Light
-			if (n->GetUseLight()) {
-				SetShaderLight(*light);
-			}
+			SetShaderLight(*light);
 
 			if (n->GetBump()) {
 				GLuint bumptexture = n->GetBump();
@@ -202,10 +198,13 @@ void Renderer::DrawNode(SceneNode* n) {
 			glUniform1f(glGetUniformLocation(shader->GetProgram(), "sceneTime"), sceneTime);
 
 			modelMatrix = n->GetWorldTransform() * Matrix4::Scale(n->GetModelScale());
+			normalMatrix = modelMatrix.Inverse().GetTransposedRotation();
 
 			UpdateShaderMatrices();
+			glUniformMatrix3fv(glGetUniformLocation(shader->GetProgram(), "normalMatrix"), 1, false, normalMatrix.values);
 
 			n->Draw(*this);
+			!n->GetUseDepthMask() ? glDepthMask(GL_TRUE) : glDepthMask(GL_FALSE);
 		}
 	}
 }

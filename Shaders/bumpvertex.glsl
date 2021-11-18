@@ -2,6 +2,7 @@
 uniform mat4 modelMatrix;
 uniform mat4 viewMatrix;
 uniform mat4 projMatrix;
+uniform mat3 normalMatrix;
 
 in vec3 position;
 in vec4 colour;
@@ -22,7 +23,6 @@ void main(void) {
     OUT.colour = colour;
     OUT.texCoord = texCoord;
 
-    mat3 normalMatrix = transpose(inverse(mat3(modelMatrix )));
 
     vec3 wNormal = normalize(normalMatrix * normalize(normal ));
     vec3 wTangent = normalize(normalMatrix * normalize(tangent.xyz ));

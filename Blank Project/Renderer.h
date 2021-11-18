@@ -1,6 +1,7 @@
 #pragma  once
 #include "../nclgl/OGLRenderer.h"
 #include "../nclgl/Frustum.h"
+#include "../nclgl/Matrix3.h"
 
 class  Camera;
 class  SceneNode;
@@ -18,6 +19,7 @@ protected:
 	void          ClearNodeLists();
 	void          DrawNodes();
 	void          DrawNode(SceneNode* n);
+	//virtual void UpdateShaderMatrices();
 	
 	void DrawSkybox();
 
@@ -35,4 +37,6 @@ protected:
 	vector<Shader*> shaders;
 	vector<GLuint> textures;
 	Vector3 heightmapSize;
+
+	Matrix3 normalMatrix;
 };
