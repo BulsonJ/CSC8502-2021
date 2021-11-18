@@ -7,6 +7,7 @@ class  Camera;
 class  SceneNode;
 class  Mesh;
 class  Shader;
+class Material;
 class  Renderer : public  OGLRenderer {
 public:
 	Renderer(Window& parent);
@@ -34,6 +35,7 @@ protected:
 
 	Mesh* quad;
 	Mesh* cube;
+	vector<Material*> materials;
 	vector<Shader*> shaders;
 	vector<GLuint> textures;
 	Vector3 heightmapSize;

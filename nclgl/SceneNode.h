@@ -3,12 +3,13 @@
 #include "Vector3.h"
 #include "Vector4.h"
 #include "Mesh.h"
+#include "Material.h"
 #include < vector >
 
 class SceneNode {
 public:
 	SceneNode(Mesh* m = NULL, Vector4 colour = Vector4(1, 1, 1, 1));
-	SceneNode(Mesh* m, Shader* shader);
+	SceneNode(Mesh* m, Material* material);
 	~SceneNode(void);
 
 	void SetTransform(const Matrix4 & matrix) { transform = matrix; }
@@ -25,10 +26,9 @@ public:
 	Mesh * GetMesh() const { return mesh; }
 	void SetMesh(Mesh* m) { mesh = m; }
 
-	Shader* GetShader() const { return shader; }
-	void SetShader(Shader* s) { shader = s; }
-	void SetShaderOverall(SceneNode* s, Shader* shader);
-	
+	void      SetMaterial(Material*  mat) { material = mat; }
+	Material*    GetMaterial()  const { return  material; }
+
 	void AddChild(SceneNode* s);
 	void RemoveChild(SceneNode* s);
 	virtual void Update(float dt);
@@ -46,17 +46,6 @@ public:
 	void      SetBoundingRadius(float f) { boundingRadius = f; }
 	float     GetCameraDistance()  const { return  distanceFromCamera; }
 	void      SetCameraDistance(float f) { distanceFromCamera = f; }
-	void      SetTexture(GLuint  tex) { texture = tex; }
-	GLuint    GetTexture()  const { return  texture; }
-
-	void      SetBump(GLuint  bump) { bumpTexture = bump; }
-	GLuint    GetBump()  const { return  bumpTexture; }
-
-	void      SetCubeMap(GLuint  cub) { cubeMap = cub; }
-	GLuint    GetCubeMap()  const { return  cubeMap; }
-
-	void SetDepthMask(bool use) { useDepth = use; }
-	bool GetUseDepthMask() { return useDepth; }
 
 	static  bool  CompareByCameraDistance(SceneNode * a, SceneNode * b) {
 		return (a->distanceFromCamera < 
@@ -66,12 +55,6 @@ public:
 protected:
 	SceneNode* parent;
 
-	Mesh* mesh;
-	Shader* shader;
-	GLuint texture;
-	GLuint bumpTexture;
-	GLuint cubeMap;
-
 	Matrix4 worldTransform;
 	Matrix4 transform;
 	Vector3 modelScale;
@@ -80,7 +63,8 @@ protected:
 	float distanceFromCamera;
 	float boundingRadius;
 
-	bool useDepth;
+	Mesh* mesh;
+	Material* material;
 };
 
 

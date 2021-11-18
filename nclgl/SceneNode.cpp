@@ -2,16 +2,12 @@
 
 SceneNode::SceneNode(Mesh* mesh, Vector4 colour) {
 	this-> mesh = mesh;
-	this-> shader = NULL;
 	this-> colour = colour;
+	this->material = NULL;
 	parent = NULL;
 	modelScale = Vector3(1, 1, 1);
 	boundingRadius = 1.0f;
 	distanceFromCamera = 0.0f;
-	texture = 0;
-	bumpTexture = 0;
-	cubeMap = 0;
-	useDepth = true;
 }
 
 
@@ -67,7 +63,7 @@ void SceneNode::SetScale(SceneNode* n, int scale) {
 	}
 }
 
-void SceneNode::SetShaderOverall(SceneNode* n, Shader* shader) {
+/*void SceneNode::SetShaderOverall(SceneNode* n, Shader* shader) {
 	if (n->GetMesh()) {
 		n->SetShader(shader);
 	}
@@ -77,4 +73,4 @@ void SceneNode::SetShaderOverall(SceneNode* n, Shader* shader) {
 		i != n->GetChildIteratorEnd(); ++i) {
 		SetShaderOverall(*i, shader);
 	}
-}
+}*/

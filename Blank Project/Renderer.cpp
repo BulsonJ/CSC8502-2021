@@ -4,6 +4,7 @@
 #include "../nclgl/Camera.h"
 #include "../nclgl/HeightMap.h"
 #include "../nclgl/Light.h"
+#include "../nclgl/Material.h"
 #include  <algorithm>                //For  std::sort ...
 Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	root = new SceneNode();
@@ -55,27 +56,33 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 	// Create height map
 	SceneNode* heightMap = new SceneNode();
+	Material* heightMat = new Material();
+	heightMat->SetShader(shaders[0]);
+	heightMat->SetTexture(textures[0]);
+	heightMat->SetBump(textures[1]);
 	HeightMap* heightMapMesh = new HeightMap(TEXTUREDIR"noise.png");
 	heightMap->SetMesh(heightMapMesh);
-	heightMap->SetShaderOverall(heightMap,shaders[0]);
-	heightMap->SetTexture(textures[0]);
-	heightMap->SetBump(textures[1]);
 	heightMap->SetModelScale(Vector3(1, 1, 1));
+	heightMap->SetMaterial(heightMat);
 	root->AddChild(heightMap);
+	materials.emplace_back(heightMat);
 	heightmapSize = heightMapMesh->GetHeightmapSize();
 
 	// Create water
 	SceneNode* water = new SceneNode();
+	Material* waterMat = new Material();
+	waterMat->SetTexture(textures[3]);
+	waterMat->SetShader(shaders[2]);
+	waterMat->SetCubeMap(textures[2]);
+	waterMat->SetBump(textures[4]);
 	HeightMap* waterMapMesh = new HeightMap();
 	water->SetMesh(waterMapMesh);
-	water->SetTexture(textures[3]);
-	water->SetShaderOverall(water, shaders[2]);
-	water->SetDepthMask(false);
 	water->SetColour(Vector4(1.0, 1.0, 1.0, 0.5));
 	water->SetTransform(Matrix4::Translation(Vector3(0, 150, 0)));
-	water->SetCubeMap(textures[2]);
-	water->SetBump(textures[4]);
+	water->SetMaterial(waterMat);
+
 	root->AddChild(water);
+	materials.emplace_back(waterMat);
 
 
 	camera = new Camera(-45.0f, 0.0f,
@@ -104,6 +111,10 @@ Renderer::~Renderer(void) {
 	for (auto it = textures.begin(); it != textures.end(); it++) {
 		glDeleteTextures(1, &(*it));
 	}
+	for (auto it = materials.begin(); it != materials.end(); it++) {
+		delete *it;
+	}
+	delete quad;
 }
 
 void Renderer::UpdateScene(float dt) {
@@ -156,42 +167,15 @@ void   Renderer::DrawNodes() {
 void Renderer::DrawNode(SceneNode* n) {
 
 	if (n->GetMesh()) {
-		if (n->GetShader()) {
-			Shader* shader = (Shader*)(n->GetShader());
-			n->GetUseDepthMask() ? glDepthMask(GL_TRUE) : glDepthMask(GL_FALSE);
+		if (n->GetMaterial()) {
+			Material* material = n->GetMaterial();
+			Shader* shader = (Shader*)(material->GetShader());
 			BindShader(shader);
 
-			// Get texture of scene node, if scene node has texture it will be bound and uniform set to 1,
-			// otherwise set to 0
-			if (n->GetTexture()) {
-				GLuint texture = n->GetTexture();
-				glUniform1i(glGetUniformLocation(shader->GetProgram(), "diffuseTex"), 0);
-				glActiveTexture(GL_TEXTURE0);
-				glBindTexture(GL_TEXTURE_2D, texture);
-
-				glUniform1i(glGetUniformLocation(shader->GetProgram(), "useTexture"), 1);
-			}
-			else {
-				glUniform1i(glGetUniformLocation(shader->GetProgram(), "useTexture"), 0);
-			}
-
 			SetShaderLight(*light);
-
-			if (n->GetBump()) {
-				GLuint bumptexture = n->GetBump();
-				glUniform1i(glGetUniformLocation(shader->GetProgram(), "bumpTex"), 1);
-				glActiveTexture(GL_TEXTURE1);
-				glBindTexture(GL_TEXTURE_2D, bumptexture);
-			}
-
-			if (n->GetCubeMap()) {
-				glUniform1i(glGetUniformLocation(shader->GetProgram(), "cubeTex"), 2);
-				glActiveTexture(GL_TEXTURE2);
-				glBindTexture(GL_TEXTURE_CUBE_MAP, n->GetCubeMap());
-			}
+			material->PassShaderUniforms();
 
 			glUniform3fv(glGetUniformLocation(shader->GetProgram(), "cameraPos"), 1, (float*)& camera->GetPosition());
-
 			glUniform4fv(glGetUniformLocation(shader->GetProgram(), "nodeColour"), 1, (float*)& n->GetColour());
 
 			// Custom uniforms
@@ -204,13 +188,11 @@ void Renderer::DrawNode(SceneNode* n) {
 			glUniformMatrix3fv(glGetUniformLocation(shader->GetProgram(), "normalMatrix"), 1, false, normalMatrix.values);
 
 			n->Draw(*this);
-			!n->GetUseDepthMask() ? glDepthMask(GL_TRUE) : glDepthMask(GL_FALSE);
 		}
 	}
 }
 
 void  Renderer::RenderScene() {
-	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 	DrawSkybox();
 	BuildNodeLists(root);
 	SortNodeLists();
@@ -224,6 +206,7 @@ void Renderer::ClearNodeLists() {
 }
 
 void Renderer::DrawSkybox() {
+	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 	glDepthMask(GL_FALSE);
 
 

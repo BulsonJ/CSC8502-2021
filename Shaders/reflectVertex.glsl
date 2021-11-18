@@ -9,13 +9,17 @@ uniform mat3 normalMatrix;
 uniform float sceneTime;
 
 in vec3 position;
+in vec4 colour;
 in vec3 normal;
+in vec4 tangent; //New! Note , Vec4!
 in vec2 texCoord;
 
 out Vertex {
-    vec3 colour;
+    vec4 colour;
     vec2 texCoord;
     vec3 normal;
+    vec3 tangent; //New! Note , Vec3!
+    vec3 binormal; //New!
     vec3 worldPos;
 } OUT;
 
@@ -29,9 +33,15 @@ void main(void) {
     float f = k * (position.x - speed * sceneTime);
     offset.y = amplitude * sin(f) ; // amplitude first float
 
-    vec3 tangent = normalize(vec3(1, k * amplitude * cos(f), 0));
+    vec3 tangent_wave = normalize(vec3(1, k * amplitude * cos(f), 0));
     vec3 normal_wave = vec3(-tangent.y, tangent.x, 0);
-    OUT.normal = normalize(normalMatrix * normalize(normal));
+    
+    vec3 wNormal = normalize(normalMatrix * normalize(normal ));
+    vec3 wTangent = normalize(normalMatrix * normalize(tangent_wave));
+
+    OUT.normal = wNormal;
+    OUT.tangent = wTangent;
+    OUT.binormal = cross(wTangent , wNormal) * tangent.w;
 
     OUT.texCoord = (textureMatrix * vec4(texCoord , 0.0, 1.0)). xy;
 
