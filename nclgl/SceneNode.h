@@ -52,11 +52,11 @@ public:
 	void      SetBump(GLuint  bump) { bumpTexture = bump; }
 	GLuint    GetBump()  const { return  bumpTexture; }
 
+	void      SetCubeMap(GLuint  cub) { cubeMap = cub; }
+	GLuint    GetCubeMap()  const { return  cubeMap; }
+
 	void SetUseLight(bool use) { useLight = use; }
 	bool GetUseLight() { return useLight; }
-
-	void SetModifyModelMatrix(bool mod) { modifyModelMatrix = mod; }
-	bool GetModifyModelMatrix() { return modifyModelMatrix; }
 
 	static  bool  CompareByCameraDistance(SceneNode * a, SceneNode * b) {
 		return (a->distanceFromCamera < 
@@ -70,6 +70,7 @@ protected:
 	Shader* shader;
 	GLuint texture;
 	GLuint bumpTexture;
+	GLuint cubeMap;
 
 	Matrix4 worldTransform;
 	Matrix4 transform;
@@ -80,7 +81,6 @@ protected:
 	float boundingRadius;
 
 	bool useLight;
-	bool modifyModelMatrix;
 };
 
 

@@ -6,11 +6,14 @@
 #include "../nclgl/Light.h"
 #include  <algorithm>                //For  std::sort ...
 Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
+	root = new SceneNode();
+
 	quad = Mesh::GenerateQuad();
 
 	// Load in shaders and textures
 
 	shaders.emplace_back(new Shader("bumpVertex.glsl", "bumpFragment.glsl"));
+	shaders.emplace_back(new Shader("skyboxVertex.glsl", "skyboxFragment.glsl"));
 	shaders.emplace_back(new Shader("reflectVertex.glsl", "reflectFragment.glsl"));
 
 	textures.emplace_back(SOIL_load_OGL_texture(
@@ -21,9 +24,20 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 		TEXTUREDIR"Barren RedsDOT3.JPG", SOIL_LOAD_AUTO,
 		SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS));
 
+	textures.emplace_back(SOIL_load_OGL_cubemap(
+		TEXTUREDIR"skybox/right.png", TEXTUREDIR"skybox/left.png",
+		TEXTUREDIR"skybox/top.png", TEXTUREDIR"rusted_south.jpg",
+		TEXTUREDIR"skybox/back.png", TEXTUREDIR"skybox/front.png",
+		SOIL_LOAD_RGB, SOIL_CREATE_NEW_ID, 0));
+
 	textures.emplace_back(SOIL_load_OGL_texture(
 		TEXTUREDIR"water.TGA", SOIL_LOAD_AUTO,
 		SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS));
+
+	textures.emplace_back(SOIL_load_OGL_texture(
+		TEXTUREDIR"waterbump.png", SOIL_LOAD_AUTO,
+		SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS));
+
 
 	for (auto it = shaders.begin(); it != shaders.end(); it++) {
 		if (!(*it)->LoadSuccess()) return;
@@ -36,8 +50,8 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	SetTextureRepeating(textures[0], true);
 	SetTextureRepeating(textures[1], true);
 	SetTextureRepeating(textures[2], true);
-
-	root = new SceneNode();
+	SetTextureRepeating(textures[3], true);
+	SetTextureRepeating(textures[4], true);
 
 	// Create height map
 	SceneNode* heightMap = new SceneNode();
@@ -54,11 +68,13 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	SceneNode* water = new SceneNode();
 	HeightMap* waterMapMesh = new HeightMap();
 	water->SetMesh(waterMapMesh);
-	water->SetTexture(textures[2]);
-	water->SetShaderOverall(water, shaders[1]);
-	water->SetUseLight(false);
+	water->SetTexture(textures[3]);
+	water->SetShaderOverall(water, shaders[2]);
+	water->SetUseLight(true);
 	water->SetColour(Vector4(1.0, 1.0, 1.0, 0.5));
 	water->SetTransform(Matrix4::Translation(Vector3(0, 150, 0)));
+	water->SetCubeMap(textures[2]);
+	water->SetBump(textures[4]);
 	root->AddChild(water);
 
 
@@ -167,9 +183,15 @@ void Renderer::DrawNode(SceneNode* n) {
 
 			if (n->GetBump()) {
 				GLuint bumptexture = n->GetBump();
-				glUniform1i(glGetUniformLocation(shader->GetProgram(), "bumpTex"), 2);
-				glActiveTexture(GL_TEXTURE2);
+				glUniform1i(glGetUniformLocation(shader->GetProgram(), "bumpTex"), 1);
+				glActiveTexture(GL_TEXTURE1);
 				glBindTexture(GL_TEXTURE_2D, bumptexture);
+			}
+
+			if (n->GetCubeMap()) {
+				glUniform1i(glGetUniformLocation(shader->GetProgram(), "cubeTex"), 2);
+				glActiveTexture(GL_TEXTURE2);
+				glBindTexture(GL_TEXTURE_CUBE_MAP, n->GetCubeMap());
 			}
 
 			glUniform3fv(glGetUniformLocation(shader->GetProgram(), "cameraPos"), 1, (float*)& camera->GetPosition());
@@ -179,13 +201,7 @@ void Renderer::DrawNode(SceneNode* n) {
 			// Custom uniforms
 			glUniform1f(glGetUniformLocation(shader->GetProgram(), "sceneTime"), sceneTime);
 
-			if (n->GetModifyModelMatrix()) {
-				modelMatrix = n->GetWorldTransform() * Matrix4::Scale(n->GetModelScale());
-			}
-			else {
-				modelMatrix.ToIdentity(); //New!
-				textureMatrix.ToIdentity(); //New!
-			}
+			modelMatrix = n->GetWorldTransform() * Matrix4::Scale(n->GetModelScale());
 
 			UpdateShaderMatrices();
 
@@ -195,9 +211,10 @@ void Renderer::DrawNode(SceneNode* n) {
 }
 
 void  Renderer::RenderScene() {
+	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+	DrawSkybox();
 	BuildNodeLists(root);
 	SortNodeLists();
-	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 	DrawNodes();
 	ClearNodeLists();
 }
@@ -205,4 +222,22 @@ void  Renderer::RenderScene() {
 void Renderer::ClearNodeLists() {
 	transparentNodeList.clear();
 	nodeList.clear();
+}
+
+void Renderer::DrawSkybox() {
+	glDepthMask(GL_FALSE);
+
+
+	BindShader(shaders[1]);
+
+	glUniform1i(glGetUniformLocation(
+		shaders[1]->GetProgram(), "cubeTex"), 2);
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, textures[2]);
+
+	UpdateShaderMatrices();
+
+	quad->Draw();
+
+	glDepthMask(GL_TRUE);
 }

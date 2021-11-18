@@ -18,8 +18,8 @@ protected:
 	void          ClearNodeLists();
 	void          DrawNodes();
 	void          DrawNode(SceneNode* n);
-
-	void AddHeightMap();
+	
+	void DrawSkybox();
 
 	vector <SceneNode*> transparentNodeList;
 	vector <SceneNode*> nodeList;

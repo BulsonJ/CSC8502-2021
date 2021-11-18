@@ -10,8 +10,8 @@ SceneNode::SceneNode(Mesh* mesh, Vector4 colour) {
 	distanceFromCamera = 0.0f;
 	texture = 0;
 	bumpTexture = 0;
+	cubeMap = 0;
 	useLight = true;
-	modifyModelMatrix = true;
 }
 
 

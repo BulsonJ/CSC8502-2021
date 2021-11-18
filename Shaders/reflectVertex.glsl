@@ -28,6 +28,10 @@ void main(void) {
     float f = k * (position.x - speed * sceneTime);
     offset.y = amplitude * sin(f) ; // amplitude first float
 
+    vec3 tangent = normalize(vec3(1, k * amplitude * cos(f), 0));
+    vec3 normal_wave = vec3(-tangent.y, tangent.x, 0);
+    //OUT.normal = normal_wave;
+
     mat3 normalMatrix = transpose(inverse(mat3(modelMatrix )));
     OUT.texCoord = (textureMatrix * vec4(texCoord , 0.0, 1.0)). xy;
     OUT.normal = normalize(normalMatrix * normalize(normal));
