@@ -118,9 +118,9 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0,
 		GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 
-	glGenFramebuffers(1, &bufferFBO);
+	glGenFramebuffers(1, &depthFBO);
 
-	glBindFramebuffer(GL_FRAMEBUFFER, bufferFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, depthFBO);
 
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
 		GL_TEXTURE_2D, bufferDepthTex, 0);
@@ -163,7 +163,7 @@ Renderer::~Renderer(void) {
 
 	glDeleteTextures(1, &bufferColourTex);
 	glDeleteTextures(1, &bufferDepthTex);
-	glDeleteFramebuffers(1, &bufferFBO);
+	glDeleteFramebuffers(1, &depthFBO);
 }
 
 void Renderer::UpdateScene(float dt) {
@@ -205,31 +205,45 @@ void Renderer::SortNodeLists() {
 }
 
 void   Renderer::DrawNodes() {
-	glBindFramebuffer(GL_FRAMEBUFFER, bufferFBO);
-	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT |
-		GL_STENCIL_BUFFER_BIT);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, depthFBO);
+	glClear(GL_DEPTH_BUFFER_BIT |
+		GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+	glDepthMask(GL_TRUE);
 	for (const auto& i : nodeList) {
 		DrawNode(i);
 	}
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-
-	for (const auto& i : transparentNodeList) {
-		DrawNode(i);
-	}
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 	BindShader(sceneShader);
 	modelMatrix.ToIdentity();
 	viewMatrix.ToIdentity();
 	projMatrix.ToIdentity();
 	UpdateShaderMatrices();
-	glActiveTexture(GL_TEXTURE0);
+	glActiveTexture(GL_TEXTURE11);
 	glBindTexture(GL_TEXTURE_2D, bufferColourTex);
 	glUniform1i(glGetUniformLocation(
-		sceneShader->GetProgram(), "diffuseTex"), 0);
+		sceneShader->GetProgram(), "diffuseTex"), 11);
 	quad->Draw();
+
+
+	projMatrix = Matrix4::Perspective(1.0f, 15000.0f,
+		(float)width / (float)height, 45.0f);
+	viewMatrix = camera->BuildViewMatrix();
+	glClear(GL_DEPTH_BUFFER_BIT |
+		GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+	DrawSkybox();
+
+	for (const auto& i : nodeList) {
+		DrawNode(i);
+	}
+
+	
+	for (const auto& i : transparentNodeList) {
+		DrawNode(i);
+	}
+
+
 
 }
 
@@ -248,6 +262,10 @@ void Renderer::DrawNode(SceneNode* n) {
 			glUniform4fv(glGetUniformLocation(shader->GetProgram(), "nodeColour"), 1, (float*)& n->GetColour());
 			glUniform1f(glGetUniformLocation(shader->GetProgram(), "sceneTime"), sceneTime);
 
+			glActiveTexture(GL_TEXTURE15);
+			glBindTexture(GL_TEXTURE_2D, bufferDepthTex);
+			glUniform1i(glGetUniformLocation(shader->GetProgram(), "depthTex"), 15);
+
 
 			modelMatrix = n->GetWorldTransform() * Matrix4::Scale(n->GetModelScale());
 			normalMatrix = modelMatrix.Inverse().GetTransposedRotation();
@@ -261,7 +279,6 @@ void Renderer::DrawNode(SceneNode* n) {
 }
 
 void  Renderer::RenderScene() {
-	DrawSkybox();
 	BuildNodeLists(root);
 	SortNodeLists();
 	DrawNodes();
@@ -274,7 +291,8 @@ void Renderer::ClearNodeLists() {
 }
 
 void Renderer::DrawSkybox() {
-	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT |
+		GL_STENCIL_BUFFER_BIT);
 	glDepthMask(GL_FALSE);
 
 

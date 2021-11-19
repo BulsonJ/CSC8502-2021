@@ -23,6 +23,7 @@ protected:
 	//virtual void UpdateShaderMatrices();
 	
 	void DrawSkybox();
+	void DrawDepth();
 
 	vector <SceneNode*> transparentNodeList;
 	vector <SceneNode*> nodeList;
@@ -35,7 +36,7 @@ protected:
 
 	Shader* processShader;
 	Shader* sceneShader;
-	GLuint bufferFBO;
+	GLuint depthFBO;
 	GLuint bufferColourTex;
 	GLuint bufferDepthTex;
 

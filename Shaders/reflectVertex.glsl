@@ -29,6 +29,7 @@ out Vertex {
 
 void main(void) {
 
+
     vec3 offset = vec3(0,0,0);
     float k = 2 * 3.142 / waveLength; // last float wavelength
     float f = k * (position.x - speed * sceneTime);

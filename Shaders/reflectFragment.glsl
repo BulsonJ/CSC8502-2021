@@ -5,6 +5,8 @@ uniform sampler2D bumpTex;
 uniform samplerCube cubeTex;
 uniform sampler2D depthTex;
 
+uniform mat4 projMatrix;
+
 uniform vec4 lightColour;
 uniform vec3 lightPos;
 uniform float lightRadius;
@@ -21,6 +23,15 @@ in Vertex {
 } IN;
 
 out vec4 fragColour;
+
+float linearDepth(float depthSample)
+{
+    depthSample = 2.0 * depthSample - 1.0;
+    float zNear = 1.0f;
+    float zFar = 15000.0f;
+    float zLinear = 2.0 * zNear * zFar / (zFar + zNear - depthSample * (zFar - zNear));
+    return zLinear;
+}
 
 void main(void) {
    
@@ -53,5 +64,14 @@ void main(void) {
     fragColour.rgb += surface * 0.1f;
     fragColour.a = diffuse.a;
     fragColour.a = 0.7;
-    fragColour = texture(depthTex , IN.texCoord );
+
+    float depth = texture(depthTex, gl_FragCoord.xy).r;
+
+    depth = linearDepth(depth);
+
+    fragColour.rgb = vec3(depth,depth,depth);
+
+
+
+    //fragColour = vec4(gl_FragCoord.z,gl_FragCoord.z,gl_FragCoord.z,1.0);
 }
