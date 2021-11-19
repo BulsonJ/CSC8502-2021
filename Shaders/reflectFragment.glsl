@@ -20,6 +20,7 @@ in Vertex {
     vec3 tangent; //New!
     vec3 binormal; //New!
     vec3 worldPos;
+    vec4 clipSpace;
 } IN;
 
 out vec4 fragColour;
@@ -58,6 +59,19 @@ void main(void) {
     vec4 reflectTex = texture(cubeTex ,reflectDir );
     diffuse.rgb = reflectTex.rgb + (diffuse.rgb * 0.25f);
 
+    vec2 ndc = (IN.clipSpace.xy/IN.clipSpace.w)/2.0 + 0.5;
+    vec2 refractTexCoords = vec2(ndc.x,ndc.y);
+
+    float far = 15000.0;
+    float near = 1.0;
+    
+    float depth = texture(depthTex, refractTexCoords).r;
+    float floorDistance = 2.0 * near * far / (far + near - (2.0 * depth - 1.0) * (far - near));
+    
+    depth = gl_FragCoord.z;
+    float waterDistance = 2.0 * near * far / (far + near - (2.0 * depth - 1.0) * (far - near));
+    float waterDepth = floorDistance - waterDistance;
+
     vec3 surface = (diffuse.rgb * lightColour.rgb);
     fragColour.rgb = surface * lambert * attenuation;
     fragColour.rgb += (lightColour.rgb * specFactor )* attenuation *0.33;
@@ -65,13 +79,6 @@ void main(void) {
     fragColour.a = diffuse.a;
     fragColour.a = 0.7;
 
-    float depth = texture(depthTex, gl_FragCoord.xy).r;
+    fragColour.rgb = mix(vec3(1.0,1.0,1.0),fragColour.rgb, waterDepth / 30.0);
 
-    depth = linearDepth(depth);
-
-    fragColour.rgb = vec3(depth,depth,depth);
-
-
-
-    //fragColour = vec4(gl_FragCoord.z,gl_FragCoord.z,gl_FragCoord.z,1.0);
 }

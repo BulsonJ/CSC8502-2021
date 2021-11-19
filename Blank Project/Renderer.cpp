@@ -106,8 +106,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, width, height,
-		0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0);
 
 	glGenTextures(1, &bufferColourTex);
 	glBindTexture(GL_TEXTURE_2D, bufferColourTex);
@@ -123,8 +122,6 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	glBindFramebuffer(GL_FRAMEBUFFER, depthFBO);
 
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
-		GL_TEXTURE_2D, bufferDepthTex, 0);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT,
 		GL_TEXTURE_2D, bufferDepthTex, 0);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
 		GL_TEXTURE_2D, bufferColourTex, 0);
@@ -207,43 +204,22 @@ void Renderer::SortNodeLists() {
 void   Renderer::DrawNodes() {
 
 	glBindFramebuffer(GL_FRAMEBUFFER, depthFBO);
-	glClear(GL_DEPTH_BUFFER_BIT |
-		GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-	glDepthMask(GL_TRUE);
+	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 	for (const auto& i : nodeList) {
 		DrawNode(i);
 	}
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	BindShader(sceneShader);
-	modelMatrix.ToIdentity();
-	viewMatrix.ToIdentity();
-	projMatrix.ToIdentity();
-	UpdateShaderMatrices();
-	glActiveTexture(GL_TEXTURE11);
-	glBindTexture(GL_TEXTURE_2D, bufferColourTex);
-	glUniform1i(glGetUniformLocation(
-		sceneShader->GetProgram(), "diffuseTex"), 11);
-	quad->Draw();
+	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
-
-	projMatrix = Matrix4::Perspective(1.0f, 15000.0f,
-		(float)width / (float)height, 45.0f);
-	viewMatrix = camera->BuildViewMatrix();
-	glClear(GL_DEPTH_BUFFER_BIT |
-		GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 	DrawSkybox();
-
 	for (const auto& i : nodeList) {
 		DrawNode(i);
 	}
 
-	
 	for (const auto& i : transparentNodeList) {
 		DrawNode(i);
 	}
-
-
 
 }
 
@@ -291,8 +267,7 @@ void Renderer::ClearNodeLists() {
 }
 
 void Renderer::DrawSkybox() {
-	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT |
-		GL_STENCIL_BUFFER_BIT);
+	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 	glDepthMask(GL_FALSE);
 
 
