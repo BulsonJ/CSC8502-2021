@@ -5,13 +5,18 @@
 #include "../nclgl/HeightMap.h"
 #include "../nclgl/Light.h"
 #include "../nclgl/Material.h"
+#include "../nclgl/WaveMaterial.h"
 #include  <algorithm>                //For  std::sort ...
+const int POST_PASSES = 10;
 Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	root = new SceneNode();
 
 	quad = Mesh::GenerateQuad();
 
 	// Load in shaders and textures
+
+	processShader = new Shader("TexturedVertex.glsl", "processfrag.glsl");
+	sceneShader = new Shader("TexturedVertex.glsl", "TexturedFragment.glsl");
 
 	shaders.emplace_back(new Shader("bumpVertex.glsl", "bumpFragment.glsl"));
 	shaders.emplace_back(new Shader("skyboxVertex.glsl", "skyboxFragment.glsl"));
@@ -39,7 +44,9 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 		TEXTUREDIR"waterbump.png", SOIL_LOAD_AUTO,
 		SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS));
 
-
+	if (!processShader->LoadSuccess() || !sceneShader->LoadSuccess()) {
+		return;
+	}
 	for (auto it = shaders.begin(); it != shaders.end(); it++) {
 		if (!(*it)->LoadSuccess()) return;
 	}
@@ -47,7 +54,6 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 		if (!(*it)) return;
 	}
 
-	
 	SetTextureRepeating(textures[0], true);
 	SetTextureRepeating(textures[1], true);
 	SetTextureRepeating(textures[2], true);
@@ -70,7 +76,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 	// Create water
 	SceneNode* water = new SceneNode();
-	Material* waterMat = new Material();
+	Material* waterMat = new WaveMaterial();
 	waterMat->SetTexture(textures[3]);
 	waterMat->SetShader(shaders[2]);
 	waterMat->SetCubeMap(textures[2]);
@@ -84,7 +90,6 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	root->AddChild(water);
 	materials.emplace_back(waterMat);
 
-
 	camera = new Camera(-45.0f, 0.0f,
 		heightmapSize * Vector3(0.5f, 5.0f, 0.5f));
 	light = new Light(heightmapSize * Vector3(0.5f, 1.5f, 0.5f),
@@ -93,6 +98,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 	projMatrix = Matrix4::Perspective(1.0f, 15000.0f,
 		(float)width / (float)height, 45.0f);
+
 
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_BLEND);
@@ -105,6 +111,8 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 Renderer::~Renderer(void) {
 	delete  root;
 	delete  camera;
+	delete processShader;
+	delete sceneShader;
 	for (auto it = shaders.begin(); it != shaders.end(); it++) {
 		delete* it;
 	}
@@ -115,6 +123,12 @@ Renderer::~Renderer(void) {
 		delete *it;
 	}
 	delete quad;
+
+
+	glDeleteTextures(2, bufferColourTex);
+	glDeleteTextures(1, &bufferDepthTex);
+	glDeleteFramebuffers(1, &bufferFBO);
+	glDeleteFramebuffers(1, &processFBO);
 }
 
 void Renderer::UpdateScene(float dt) {
@@ -159,9 +173,11 @@ void   Renderer::DrawNodes() {
 	for (const auto& i : nodeList) {
 		DrawNode(i);
 	}
+
 	for (const auto& i : transparentNodeList) {
 		DrawNode(i);
 	}
+
 }
 
 void Renderer::DrawNode(SceneNode* n) {
@@ -177,9 +193,8 @@ void Renderer::DrawNode(SceneNode* n) {
 
 			glUniform3fv(glGetUniformLocation(shader->GetProgram(), "cameraPos"), 1, (float*)& camera->GetPosition());
 			glUniform4fv(glGetUniformLocation(shader->GetProgram(), "nodeColour"), 1, (float*)& n->GetColour());
-
-			// Custom uniforms
 			glUniform1f(glGetUniformLocation(shader->GetProgram(), "sceneTime"), sceneTime);
+
 
 			modelMatrix = n->GetWorldTransform() * Matrix4::Scale(n->GetModelScale());
 			normalMatrix = modelMatrix.Inverse().GetTransposedRotation();

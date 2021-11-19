@@ -6,6 +6,10 @@ uniform mat4 projMatrix;
 uniform mat4 textureMatrix;
 uniform mat3 normalMatrix;
 
+uniform float speed;
+uniform float waveLength;
+uniform float amplitude;
+
 uniform float sceneTime;
 
 in vec3 position;
@@ -24,9 +28,6 @@ out Vertex {
 } OUT;
 
 void main(void) {
-    float amplitude = 10.0f;
-    float waveLength = 400.0f;
-    float speed = 10.0f;
 
     vec3 offset = vec3(0,0,0);
     float k = 2 * 3.142 / waveLength; // last float wavelength

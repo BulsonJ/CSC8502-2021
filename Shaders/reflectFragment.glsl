@@ -3,6 +3,7 @@
 uniform sampler2D diffuseTex;
 uniform sampler2D bumpTex;
 uniform samplerCube cubeTex;
+uniform sampler2D depthTex;
 
 uniform vec4 lightColour;
 uniform vec3 lightPos;
@@ -52,4 +53,5 @@ void main(void) {
     fragColour.rgb += surface * 0.1f;
     fragColour.a = diffuse.a;
     fragColour.a = 0.7;
+    fragColour = texture(depthTex , IN.texCoord );
 }

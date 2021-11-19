@@ -33,8 +33,14 @@ protected:
 	float sceneTime;
 	Light* light;
 
+	Shader* processShader;
+	Shader* sceneShader;
+	GLuint bufferFBO;
+	GLuint processFBO;
+	GLuint bufferColourTex[2];
+	GLuint bufferDepthTex;
+
 	Mesh* quad;
-	Mesh* cube;
 	vector<Material*> materials;
 	vector<Shader*> shaders;
 	vector<GLuint> textures;
