@@ -36,8 +36,7 @@ protected:
 	Shader* processShader;
 	Shader* sceneShader;
 	GLuint bufferFBO;
-	GLuint processFBO;
-	GLuint bufferColourTex[2];
+	GLuint bufferColourTex;
 	GLuint bufferDepthTex;
 
 	Mesh* quad;
