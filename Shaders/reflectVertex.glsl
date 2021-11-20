@@ -10,6 +10,8 @@ uniform float speed;
 uniform float waveLength;
 uniform float amplitude;
 
+uniform vec4 plane;
+
 uniform float sceneTime;
 
 in vec3 position;
@@ -32,14 +34,14 @@ void main(void) {
 
     
     vec3 offset = vec3(0,0,0);
-    float k = 2 * 3.142 / waveLength; // last float wavelength
+    float k = 2 * 3.142 / waveLength;
     float f = k * (position.x - speed * sceneTime);
-    offset.y = amplitude * sin(f) ; // amplitude first float
+    offset.y = amplitude * sin(f) ;
 
     vec3 tangent_wave = normalize(vec3(1, k * amplitude * cos(f), 0));
     vec3 normal_wave = vec3(-tangent.y, tangent.x, 0);
-    
-    vec3 wNormal = normalize(normalMatrix * normalize(normal ));
+
+    vec3 wNormal = normalize(normalMatrix * normalize(normal_wave));
     vec3 wTangent = normalize(normalMatrix * normalize(tangent_wave));
 
     OUT.normal = wNormal;
@@ -50,9 +52,10 @@ void main(void) {
     OUT.clipSpace = projMatrix * viewMatrix * worldPos;
 
     OUT.worldPos = worldPos.xyz;
-    OUT.texCoord = (textureMatrix * vec4(texCoord , 0.0, 1.0)). xy;
 
-    
+    gl_ClipDistance[0] = dot(worldPos, plane);
+
+    OUT.texCoord = texCoord;
 
     gl_Position = (projMatrix * viewMatrix) * worldPos;
 }

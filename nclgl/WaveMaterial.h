@@ -17,14 +17,10 @@ public:
 	float GetWaveLength() { return waveLength; }
 	void SetWaveLength(float s) { waveLength = s; }
 
-	void  SetDepthTexture(bool  pass) { passDepthTexture = pass; }
-	bool    GetDepthTexture()  const { return  passDepthTexture; }
-
 protected:
 	float speed;
 	float amplitude;
 	float waveLength;
 
-	bool passDepthTexture;
 };
 

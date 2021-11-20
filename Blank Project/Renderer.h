@@ -34,10 +34,7 @@ protected:
 	float sceneTime;
 	Light* light;
 
-	Shader* processShader;
-	Shader* sceneShader;
 	GLuint depthFBO;
-	GLuint bufferColourTex;
 	GLuint bufferDepthTex;
 
 	Mesh* quad;
@@ -47,4 +44,5 @@ protected:
 	Vector3 heightmapSize;
 
 	Matrix3 normalMatrix;
+	Vector4 clipPlane;
 };

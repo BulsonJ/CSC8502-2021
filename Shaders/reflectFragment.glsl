@@ -35,7 +35,7 @@ float linearDepth(float depthSample)
 }
 
 void main(void) {
-   
+   // Light calculations
     vec3 incident = normalize(lightPos - IN.worldPos );
     vec3 viewDir = normalize(cameraPos - IN.worldPos );
     vec3 halfDir = normalize(incident + viewDir );
@@ -78,10 +78,10 @@ void main(void) {
     fragColour.rgb += (lightColour.rgb * specFactor )* attenuation *0.33;
     fragColour.rgb += surface * 0.1f;
 
+    // add foam
     float strength = 2;
     float foamAmount = clamp((waterDepth / 25.0) * strength, 0.0,1.0);
     fragColour.rgb = mix(vec3(1.0,1.0,1.0), fragColour.rgb, foamAmount);
-
 
     fragColour.a = clamp(waterDepth/5.0, 0.0,1.0);
 

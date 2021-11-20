@@ -4,6 +4,8 @@ uniform mat4 viewMatrix;
 uniform mat4 projMatrix;
 uniform mat3 normalMatrix;
 
+uniform vec4 plane;
+
 in vec3 position;
 in vec4 colour;
 in vec3 normal;
@@ -33,6 +35,7 @@ void main(void) {
 
     vec4 worldPos = (modelMatrix * vec4(position ,1));
 
+    gl_ClipDistance[0] = dot(worldPos, plane);
     OUT.worldPos = worldPos.xyz;
 
     gl_Position = (projMatrix * viewMatrix) * worldPos;

@@ -15,9 +15,6 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 	// Load in shaders and textures
 
-	processShader = new Shader("TexturedVertex.glsl", "processfrag.glsl");
-	sceneShader = new Shader("TexturedVertex.glsl", "TexturedFragment.glsl");
-
 	shaders.emplace_back(new Shader("bumpVertex.glsl", "bumpFragment.glsl"));
 	shaders.emplace_back(new Shader("skyboxVertex.glsl", "skyboxFragment.glsl"));
 	shaders.emplace_back(new Shader("reflectVertex.glsl", "reflectFragment.glsl"));
@@ -44,9 +41,6 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 		TEXTUREDIR"waterbump.png", SOIL_LOAD_AUTO,
 		SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS));
 
-	if (!processShader->LoadSuccess() || !sceneShader->LoadSuccess()) {
-		return;
-	}
 	for (auto it = shaders.begin(); it != shaders.end(); it++) {
 		if (!(*it)->LoadSuccess()) return;
 	}
@@ -107,29 +101,18 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0);
 
-	glGenTextures(1, &bufferColourTex);
-	glBindTexture(GL_TEXTURE_2D, bufferColourTex);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0,
-		GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-
 	glGenFramebuffers(1, &depthFBO);
-
 	glBindFramebuffer(GL_FRAMEBUFFER, depthFBO);
-
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
 		GL_TEXTURE_2D, bufferDepthTex, 0);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-		GL_TEXTURE_2D, bufferColourTex, 0);
 
 	//We can check FBO attachment success using this command!
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) !=
-		GL_FRAMEBUFFER_COMPLETE || !bufferDepthTex || !bufferColourTex) {
+		GL_FRAMEBUFFER_COMPLETE || !bufferDepthTex ) {
 		return;
 	}
+
+	clipPlane = Vector4(0, 1, 0, -water->GetTransform().GetPositionVector().y);
 
 
 	glEnable(GL_DEPTH_TEST);
@@ -143,8 +126,6 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 Renderer::~Renderer(void) {
 	delete  root;
 	delete  camera;
-	delete processShader;
-	delete sceneShader;
 	for (auto it = shaders.begin(); it != shaders.end(); it++) {
 		delete* it;
 	}
@@ -157,7 +138,6 @@ Renderer::~Renderer(void) {
 	delete quad;
 
 
-	glDeleteTextures(1, &bufferColourTex);
 	glDeleteTextures(1, &bufferDepthTex);
 	glDeleteFramebuffers(1, &depthFBO);
 }
@@ -202,6 +182,10 @@ void Renderer::SortNodeLists() {
 
 void   Renderer::DrawNodes() {
 
+	glEnable(GL_CLIP_DISTANCE0);
+
+	//glDisable(GL_CLIP_DISTANCE0);
+
 	glBindFramebuffer(GL_FRAMEBUFFER, depthFBO);
 	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 	for (const auto& i : nodeList) {
@@ -210,7 +194,6 @@ void   Renderer::DrawNodes() {
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-
 	DrawSkybox();
 	for (const auto& i : nodeList) {
 		DrawNode(i);
@@ -240,6 +223,8 @@ void Renderer::DrawNode(SceneNode* n) {
 			glActiveTexture(GL_TEXTURE15);
 			glBindTexture(GL_TEXTURE_2D, bufferDepthTex);
 			glUniform1i(glGetUniformLocation(shader->GetProgram(), "depthTex"), 15);
+
+			glUniform4fv(glGetUniformLocation(shader->GetProgram(), "plane"), 1, (float*)&clipPlane);
 
 
 			modelMatrix = n->GetWorldTransform() * Matrix4::Scale(n->GetModelScale());
