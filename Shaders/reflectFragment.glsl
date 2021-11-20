@@ -4,6 +4,8 @@ uniform sampler2D diffuseTex;
 uniform sampler2D bumpTex;
 uniform samplerCube cubeTex;
 uniform sampler2D depthTex;
+uniform sampler2D reflectionTex;
+uniform sampler2D refractionTex;
 
 uniform mat4 projMatrix;
 
@@ -55,13 +57,22 @@ void main(void) {
     specFactor = pow(specFactor , 60.0 );
 
     // Calculate reflection and add to diffuse
-    vec3 reflectDir = reflect(-viewDir ,normalize(IN.normal));
-    vec4 reflectTex = texture(cubeTex ,reflectDir );
-    diffuse.rgb = reflectTex.rgb + (diffuse.rgb * 0.25f);
+    //vec3 reflectDir = reflect(-viewDir ,normalize(IN.normal));
+    //vec4 reflectTex = texture(cubeTex ,reflectDir );
+    //diffuse.rgb = reflectTex.rgb + (diffuse.rgb * 0.25f);
 
-    // Calculate depth
+
+    // Calculate refract/reflext tex coords
     vec2 ndc = (IN.clipSpace.xy/IN.clipSpace.w)/2.0 + 0.5;
     vec2 refractTexCoords = vec2(ndc.x,ndc.y);
+    vec2 reflectTexCoords = vec2(ndc.x,ndc.y);
+
+    vec4 reflectColour = texture(reflectionTex, reflectTexCoords);
+    vec4 refractColour = texture(refractionTex, refractTexCoords);
+
+    fragColour = mix(reflectColour, refractColour, 0.5);
+    /*
+    // Calculate depth
     float far = 15000.0;
     float near = 1.0;
     
@@ -83,6 +94,6 @@ void main(void) {
     float foamAmount = clamp((waterDepth / 25.0) * strength, 0.0,1.0);
     fragColour.rgb = mix(vec3(1.0,1.0,1.0), fragColour.rgb, foamAmount);
 
-    fragColour.a = clamp(waterDepth/5.0, 0.0,1.0);
+    fragColour.a = clamp(waterDepth/5.0, 0.0,1.0);*/
 
 }

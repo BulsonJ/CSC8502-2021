@@ -29,7 +29,5 @@ protected:
 	GLuint texture;
 	GLuint bumpTexture;
 	GLuint cubeMap;
-
-	bool useDepth;
 };
 

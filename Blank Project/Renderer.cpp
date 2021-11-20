@@ -70,7 +70,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 	// Create water
 	SceneNode* water = new SceneNode();
-	Material* waterMat = new WaveMaterial();
+	WaveMaterial* waterMat = new WaveMaterial();
 	waterMat->SetTexture(textures[3]);
 	waterMat->SetShader(shaders[2]);
 	waterMat->SetCubeMap(textures[2]);
@@ -92,6 +92,35 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	projMatrix = Matrix4::Perspective(1.0f, 15000.0f,
 		(float)width / (float)height, 45.0f);
 
+	// Refraction and reflection buffers
+	glGenTextures(1, &refractionBufferTex);
+	glBindTexture(GL_TEXTURE_2D, refractionBufferTex);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0,
+		GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+
+	glGenTextures(1, &reflectionBufferTex);
+	glBindTexture(GL_TEXTURE_2D, reflectionBufferTex);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0,
+		GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+
+	glGenFramebuffers(1, &refractionFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, refractionFBO);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+		GL_TEXTURE_2D, refractionBufferTex, 0);
+
+	glGenFramebuffers(1, &reflectionFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, reflectionFBO);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+		GL_TEXTURE_2D, reflectionBufferTex, 0);
+
 	// Generate our scene depth texture ...
 	glGenTextures(1, &bufferDepthTex);
 	glBindTexture(GL_TEXTURE_2D, bufferDepthTex);
@@ -108,11 +137,14 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 	//We can check FBO attachment success using this command!
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) !=
-		GL_FRAMEBUFFER_COMPLETE || !bufferDepthTex ) {
+		GL_FRAMEBUFFER_COMPLETE || !bufferDepthTex || !refractionBufferTex || !reflectionBufferTex) {
 		return;
 	}
 
-	clipPlane = Vector4(0, 1, 0, -water->GetTransform().GetPositionVector().y);
+	refractionClipPlane = Vector4(0, -1, 0, water->GetTransform().GetPositionVector().y + 5.0f);
+	reflectionClipPlane = Vector4(0, 1, 0, -(water->GetTransform().GetPositionVector().y + 5.0f));
+	waterMat->SetReflectionTex(reflectionBufferTex);
+	waterMat->SetRefractionTex(refractionBufferTex);
 
 
 	glEnable(GL_DEPTH_TEST);
@@ -184,7 +216,31 @@ void   Renderer::DrawNodes() {
 
 	glEnable(GL_CLIP_DISTANCE0);
 
-	//glDisable(GL_CLIP_DISTANCE0);
+	clipPlane = refractionClipPlane;
+	glBindFramebuffer(GL_FRAMEBUFFER, refractionFBO);
+	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+	for (const auto& i : nodeList) {
+		DrawNode(i);
+	}
+
+	clipPlane = reflectionClipPlane;
+
+	float distance = 2 * (camera->GetPosition().y - reflectionClipPlane.y);
+	camera->SetPosition(Vector3(camera->GetPosition().x,camera->GetPosition().y - distance, camera->GetPosition().z));
+	camera->SetRoll(180);
+	viewMatrix = camera->BuildViewMatrix();
+
+	glBindFramebuffer(GL_FRAMEBUFFER, reflectionFBO);
+	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+	DrawSkybox();
+	for (const auto& i : nodeList) {
+		DrawNode(i);
+	}
+	camera->SetPosition(Vector3(camera->GetPosition().x, camera->GetPosition().y + distance, camera->GetPosition().z));
+	camera->SetRoll(0);
+	viewMatrix = camera->BuildViewMatrix();
+
+	glDisable(GL_CLIP_DISTANCE0);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, depthFBO);
 	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
@@ -225,7 +281,6 @@ void Renderer::DrawNode(SceneNode* n) {
 			glUniform1i(glGetUniformLocation(shader->GetProgram(), "depthTex"), 15);
 
 			glUniform4fv(glGetUniformLocation(shader->GetProgram(), "plane"), 1, (float*)&clipPlane);
-
 
 			modelMatrix = n->GetWorldTransform() * Matrix4::Scale(n->GetModelScale());
 			normalMatrix = modelMatrix.Inverse().GetTransposedRotation();

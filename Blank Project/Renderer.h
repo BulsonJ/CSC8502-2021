@@ -34,6 +34,14 @@ protected:
 	float sceneTime;
 	Light* light;
 
+	GLuint refractionFBO;
+	GLuint refractionBufferTex;
+	Vector4 refractionClipPlane;
+
+	GLuint reflectionFBO;
+	GLuint reflectionBufferTex;
+	Vector4 reflectionClipPlane;
+
 	GLuint depthFBO;
 	GLuint bufferDepthTex;
 
@@ -45,4 +53,6 @@ protected:
 
 	Matrix3 normalMatrix;
 	Vector4 clipPlane;
+
+
 };

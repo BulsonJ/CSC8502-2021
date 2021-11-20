@@ -17,10 +17,19 @@ public:
 	float GetWaveLength() { return waveLength; }
 	void SetWaveLength(float s) { waveLength = s; }
 
+	void      SetReflectionTex(GLuint  tex) { reflectionTex = tex; }
+	GLuint    GetReflectionTex()  const { return  reflectionTex; }
+
+	void      SetRefractionTex(GLuint  tex) { refractionTex = tex; }
+	GLuint    GetRefractionTex()  const { return  refractionTex; }
+
 protected:
 	float speed;
 	float amplitude;
 	float waveLength;
+
+	GLuint refractionTex;
+	GLuint reflectionTex;
 
 };
 
