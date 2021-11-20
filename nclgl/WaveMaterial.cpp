@@ -1,7 +1,7 @@
 #include "WaveMaterial.h"
 
 WaveMaterial::WaveMaterial() : Material() {
-	speed = 10.0f;
+	speed = 40.0f;
 	waveLength = 400.0f;
 	amplitude = 10.0f;
 	passDepthTexture = false;

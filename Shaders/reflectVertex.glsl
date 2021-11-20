@@ -30,7 +30,7 @@ out Vertex {
 
 void main(void) {
 
-    /*
+    
     vec3 offset = vec3(0,0,0);
     float k = 2 * 3.142 / waveLength; // last float wavelength
     float f = k * (position.x - speed * sceneTime);
@@ -46,14 +46,11 @@ void main(void) {
     OUT.tangent = wTangent;
     OUT.binormal = cross(wTangent , wNormal) * tangent.w;
 
-
-    */
-    vec4 worldPos = (modelMatrix * vec4((position),1));
+    vec4 worldPos = (modelMatrix * vec4((position + offset),1));
     OUT.clipSpace = projMatrix * viewMatrix * worldPos;
 
     OUT.worldPos = worldPos.xyz;
-    //OUT.texCoord = (textureMatrix * vec4(texCoord , 0.0, 1.0)). xy;
-    OUT.texCoord = texCoord;
+    OUT.texCoord = (textureMatrix * vec4(texCoord , 0.0, 1.0)). xy;
 
     
 

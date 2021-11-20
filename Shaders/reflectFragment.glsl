@@ -59,9 +59,9 @@ void main(void) {
     vec4 reflectTex = texture(cubeTex ,reflectDir );
     diffuse.rgb = reflectTex.rgb + (diffuse.rgb * 0.25f);
 
+    // Calculate depth
     vec2 ndc = (IN.clipSpace.xy/IN.clipSpace.w)/2.0 + 0.5;
     vec2 refractTexCoords = vec2(ndc.x,ndc.y);
-
     float far = 15000.0;
     float near = 1.0;
     
@@ -72,13 +72,17 @@ void main(void) {
     float waterDistance = 2.0 * near * far / (far + near - (2.0 * depth - 1.0) * (far - near));
     float waterDepth = floorDistance - waterDistance;
 
+    // Calculate final colour
     vec3 surface = (diffuse.rgb * lightColour.rgb);
     fragColour.rgb = surface * lambert * attenuation;
     fragColour.rgb += (lightColour.rgb * specFactor )* attenuation *0.33;
     fragColour.rgb += surface * 0.1f;
-    fragColour.a = diffuse.a;
-    fragColour.a = 0.7;
 
-    fragColour.rgb = mix(vec3(1.0,1.0,1.0),fragColour.rgb, waterDepth / 30.0);
+    float strength = 2;
+    float foamAmount = clamp((waterDepth / 25.0) * strength, 0.0,1.0);
+    fragColour.rgb = mix(vec3(1.0,1.0,1.0), fragColour.rgb, foamAmount);
+
+
+    fragColour.a = clamp(waterDepth/5.0, 0.0,1.0);
 
 }
