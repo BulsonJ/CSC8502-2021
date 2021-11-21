@@ -45,6 +45,9 @@
     <ClCompile Include="WaveMaterial.cpp">
       <Filter>Materials</Filter>
     </ClCompile>
+    <ClCompile Include="TerrainMaterial.cpp">
+      <Filter>Materials</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common.h" />
@@ -99,6 +102,9 @@
       <Filter>Materials</Filter>
     </ClInclude>
     <ClInclude Include="WaveMaterial.h">
+      <Filter>Materials</Filter>
+    </ClInclude>
+    <ClInclude Include="TerrainMaterial.h">
       <Filter>Materials</Filter>
     </ClInclude>
   </ItemGroup>

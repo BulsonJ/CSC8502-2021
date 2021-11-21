@@ -6,6 +6,7 @@ WaveMaterial::WaveMaterial() : Material() {
 	amplitude = 5.0f;
 	refractionTex = 0;
 	reflectionTex = 0;
+	dudvTex = 0;
 }
 
 WaveMaterial::~WaveMaterial() {
@@ -28,6 +29,12 @@ void WaveMaterial::PassShaderUniforms() {
 		glUniform1i(glGetUniformLocation(shader->GetProgram(), "refractionTex"), 8);
 		glActiveTexture(GL_TEXTURE8);
 		glBindTexture(GL_TEXTURE_2D, refractionTex);
+	}
+
+	if (dudvTex != 0) {
+		glUniform1i(glGetUniformLocation(shader->GetProgram(), "dudvMap"), 9);
+		glActiveTexture(GL_TEXTURE9);
+		glBindTexture(GL_TEXTURE_2D, dudvTex);
 	}
 
 }

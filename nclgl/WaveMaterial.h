@@ -23,6 +23,9 @@ public:
 	void      SetRefractionTex(GLuint  tex) { refractionTex = tex; }
 	GLuint    GetRefractionTex()  const { return  refractionTex; }
 
+	void      SetDuDvTex(GLuint  tex) { dudvTex = tex; }
+	GLuint    GetDuDvTe()  const { return  dudvTex; }
+
 protected:
 	float speed;
 	float amplitude;
@@ -30,6 +33,7 @@ protected:
 
 	GLuint refractionTex;
 	GLuint reflectionTex;
+	GLuint dudvTex;
 
 };
 

@@ -11,6 +11,7 @@ uniform float waveLength;
 uniform float amplitude;
 
 uniform vec4 plane;
+uniform vec3 cameraPos;
 
 uniform float sceneTime;
 
@@ -28,6 +29,7 @@ out Vertex {
     vec3 binormal; //New!
     vec3 worldPos;
     vec4 clipSpace;
+    vec3 toCameraVector;
 } OUT;
 
 void main(void) {
@@ -50,6 +52,8 @@ void main(void) {
     
     vec4 worldPos = (modelMatrix * vec4((position + offset),1));
     OUT.clipSpace = projMatrix * viewMatrix * worldPos;
+
+    OUT.toCameraVector = cameraPos - worldPos.xyz;
 
     OUT.worldPos = worldPos.xyz;
 

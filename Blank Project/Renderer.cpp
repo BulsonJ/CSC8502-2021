@@ -6,6 +6,7 @@
 #include "../nclgl/Light.h"
 #include "../nclgl/Material.h"
 #include "../nclgl/WaveMaterial.h"
+#include "../nclgl/TerrainMaterial.h"
 #include  <algorithm>                //For  std::sort ...
 const int POST_PASSES = 10;
 Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
@@ -41,11 +42,33 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 		TEXTUREDIR"waterbump.png", SOIL_LOAD_AUTO,
 		SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS));
 
+	textures.emplace_back(SOIL_load_OGL_texture(
+		TEXTUREDIR"dudv.png", SOIL_LOAD_AUTO,
+		SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS));
+
+	textures.emplace_back(SOIL_load_OGL_texture(
+		TEXTUREDIR"tileable_grass_00.png", SOIL_LOAD_AUTO,
+		SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS));
+
+	textures.emplace_back(SOIL_load_OGL_texture(
+		TEXTUREDIR"grass/grass01_n.JPG", SOIL_LOAD_AUTO,
+		SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS));
+
+	textures.emplace_back(SOIL_load_OGL_texture(
+		TEXTUREDIR"Sand2.JPG", SOIL_LOAD_AUTO,
+		SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS));
+
+	textures.emplace_back(SOIL_load_OGL_texture(
+		TEXTUREDIR"grass/grass01_n.JPG", SOIL_LOAD_AUTO,
+		SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS));
+
 	for (auto it = shaders.begin(); it != shaders.end(); it++) {
 		if (!(*it)->LoadSuccess()) return;
 	}
 	for (auto it = textures.begin(); it != textures.end(); it++) {
-		if (!(*it)) return;
+		if (!(*it)) {
+			return;
+		}
 	}
 
 	SetTextureRepeating(textures[0], true);
@@ -53,13 +76,24 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	SetTextureRepeating(textures[2], true);
 	SetTextureRepeating(textures[3], true);
 	SetTextureRepeating(textures[4], true);
+	SetTextureRepeating(textures[5], true);
+	SetTextureRepeating(textures[6], true);
+	SetTextureRepeating(textures[7], true);
+	SetTextureRepeating(textures[8], true);
+	SetTextureRepeating(textures[9], true);
 
 	// Create height map
 	SceneNode* heightMap = new SceneNode();
-	Material* heightMat = new Material();
+	TerrainMaterial* heightMat = new TerrainMaterial();
 	heightMat->SetShader(shaders[0]);
-	heightMat->SetTexture(textures[0]);
-	heightMat->SetBump(textures[1]);
+
+	heightMat->SetSandTex(textures[8]);
+	heightMat->SetSandNormal(textures[9]);
+	heightMat->SetGrassTex(textures[6]);
+	heightMat->SetGrassNormal(textures[7]);
+	heightMat->SetRockTex(textures[0]);
+	heightMat->SetRockNormal(textures[1]);
+
 	HeightMap* heightMapMesh = new HeightMap(TEXTUREDIR"noise.png");
 	heightMap->SetMesh(heightMapMesh);
 	heightMap->SetModelScale(Vector3(1, 1, 1));
@@ -75,6 +109,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	waterMat->SetShader(shaders[2]);
 	waterMat->SetCubeMap(textures[2]);
 	waterMat->SetBump(textures[4]);
+	waterMat->SetDuDvTex(textures[5]);
 	HeightMap* waterMapMesh = new HeightMap();
 	water->SetMesh(waterMapMesh);
 	water->SetColour(Vector4(1.0, 1.0, 1.0, 0.5));
@@ -95,8 +130,8 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	// Refraction and reflection buffers
 	glGenTextures(1, &refractionBufferTex);
 	glBindTexture(GL_TEXTURE_2D, refractionBufferTex);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0,
@@ -114,14 +149,14 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	glGenFramebuffers(1, &refractionFBO);
 	glBindFramebuffer(GL_FRAMEBUFFER, refractionFBO);
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-		GL_TEXTURE_2D, refractionBufferTex, 0);
+			GL_TEXTURE_2D, refractionBufferTex, 0);
 
 	glGenFramebuffers(1, &reflectionFBO);
 	glBindFramebuffer(GL_FRAMEBUFFER, reflectionFBO);
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-		GL_TEXTURE_2D, reflectionBufferTex, 0);
+			GL_TEXTURE_2D, reflectionBufferTex, 0);
 
-	// Generate our scene depth texture ...
+	// Depth buffer ( should be able to be combined with refraction)
 	glGenTextures(1, &bufferDepthTex);
 	glBindTexture(GL_TEXTURE_2D, bufferDepthTex);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
@@ -217,7 +252,7 @@ void Renderer::SortNodeLists() {
 
 void   Renderer::DrawNodes() {
 	glEnable(GL_CLIP_DISTANCE0);
-
+	glEnable(GL_CULL_FACE);
 	clipPlane = refractionClipPlane;
 	glBindFramebuffer(GL_FRAMEBUFFER, refractionFBO);
 	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
@@ -225,7 +260,7 @@ void   Renderer::DrawNodes() {
 		DrawNode(i);
 	}
 
-	glEnable(GL_CULL_FACE);
+
 	clipPlane = reflectionClipPlane;
 	float distance = 2 * (camera->GetPosition().y - (refractionClipPlane.w - 2.5));
 	camera->SetPosition(Vector3(camera->GetPosition().x,camera->GetPosition().y - distance, camera->GetPosition().z));
@@ -242,7 +277,7 @@ void   Renderer::DrawNodes() {
 	camera->SetPitch(-camera->GetPitch());
 	viewMatrix = camera->BuildViewMatrix();
 
-	glDisable(GL_CULL_FACE);
+	//glDisable(GL_CULL_FACE);
 	glDisable(GL_CLIP_DISTANCE0);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, depthFBO);
