@@ -104,8 +104,8 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 	glGenTextures(1, &reflectionBufferTex);
 	glBindTexture(GL_TEXTURE_2D, reflectionBufferTex);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0,
@@ -141,8 +141,8 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 		return;
 	}
 
-	refractionClipPlane = Vector4(0, -1, 0, water->GetTransform().GetPositionVector().y + 5.0f);
-	reflectionClipPlane = Vector4(0, 1, 0, -(water->GetTransform().GetPositionVector().y + 5.0f));
+	refractionClipPlane = Vector4(0, -1, 0, water->GetTransform().GetPositionVector().y + waterMat->GetAmplitude());
+	reflectionClipPlane = Vector4(0, 1, 0, -(water->GetTransform().GetPositionVector().y));
 	waterMat->SetReflectionTex(reflectionBufferTex);
 	waterMat->SetRefractionTex(refractionBufferTex);
 
@@ -169,8 +169,11 @@ Renderer::~Renderer(void) {
 	}
 	delete quad;
 
-
+	glDeleteTextures(1, &refractionBufferTex);
+	glDeleteTextures(1, &reflectionBufferTex);
 	glDeleteTextures(1, &bufferDepthTex);
+	glDeleteFramebuffers(1, &refractionFBO);
+	glDeleteFramebuffers(1, &reflectionFBO);
 	glDeleteFramebuffers(1, &depthFBO);
 }
 
@@ -213,7 +216,6 @@ void Renderer::SortNodeLists() {
 }
 
 void   Renderer::DrawNodes() {
-
 	glEnable(GL_CLIP_DISTANCE0);
 
 	clipPlane = refractionClipPlane;
@@ -223,11 +225,11 @@ void   Renderer::DrawNodes() {
 		DrawNode(i);
 	}
 
+	glEnable(GL_CULL_FACE);
 	clipPlane = reflectionClipPlane;
-
-	float distance = 2 * (camera->GetPosition().y - reflectionClipPlane.y);
+	float distance = 2 * (camera->GetPosition().y - (refractionClipPlane.w - 2.5));
 	camera->SetPosition(Vector3(camera->GetPosition().x,camera->GetPosition().y - distance, camera->GetPosition().z));
-	camera->SetRoll(180);
+	camera->SetPitch(-camera->GetPitch());
 	viewMatrix = camera->BuildViewMatrix();
 
 	glBindFramebuffer(GL_FRAMEBUFFER, reflectionFBO);
@@ -237,9 +239,10 @@ void   Renderer::DrawNodes() {
 		DrawNode(i);
 	}
 	camera->SetPosition(Vector3(camera->GetPosition().x, camera->GetPosition().y + distance, camera->GetPosition().z));
-	camera->SetRoll(0);
+	camera->SetPitch(-camera->GetPitch());
 	viewMatrix = camera->BuildViewMatrix();
 
+	glDisable(GL_CULL_FACE);
 	glDisable(GL_CLIP_DISTANCE0);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, depthFBO);

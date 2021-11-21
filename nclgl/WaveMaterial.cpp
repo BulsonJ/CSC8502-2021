@@ -3,7 +3,7 @@
 WaveMaterial::WaveMaterial() : Material() {
 	speed = 40.0f;
 	waveLength = 400.0f;
-	amplitude = 10.0f;
+	amplitude = 5.0f;
 	refractionTex = 0;
 	reflectionTex = 0;
 }

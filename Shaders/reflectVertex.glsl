@@ -47,7 +47,7 @@ void main(void) {
     OUT.normal = wNormal;
     OUT.tangent = wTangent;
     OUT.binormal = cross(wTangent , wNormal) * tangent.w;
-
+    
     vec4 worldPos = (modelMatrix * vec4((position + offset),1));
     OUT.clipSpace = projMatrix * viewMatrix * worldPos;
 
@@ -57,5 +57,5 @@ void main(void) {
 
     OUT.texCoord = texCoord;
 
-    gl_Position = (projMatrix * viewMatrix) * worldPos;
+    gl_Position = projMatrix * viewMatrix * worldPos;
 }
