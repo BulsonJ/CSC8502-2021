@@ -31,7 +31,7 @@ in Vertex {
     vec3 toCameraVector;
 } IN;
 
-out vec4 fragColour;
+out vec4 fragColour[2];
 
 float linearDepth(float depthSample)
 {
@@ -43,29 +43,9 @@ float linearDepth(float depthSample)
 }
 
 void main(void) {
-   // Light calculations
-    vec3 incident = normalize(lightPos - IN.worldPos );
-    vec3 viewDir = normalize(cameraPos - IN.worldPos );
-    vec3 halfDir = normalize(incident + viewDir );
 
     mat3 TBN = mat3(normalize(IN.tangent),
     normalize(IN.binormal), normalize(IN.normal ));
-
-    vec4 diffuse = texture(diffuseTex , IN.texCoord );
-    vec3 bumpNormal = texture(bumpTex , IN.texCoord ).rgb;
-    bumpNormal = normalize(TBN * normalize(bumpNormal * 2.0 - 1.0));
-
-    float lambert = max(dot(incident , bumpNormal), 0.0f);
-    float distance = length(lightPos - IN.worldPos );
-    float attenuation = 1.0f - clamp(distance / lightRadius ,0.0 ,1.0);
-
-    float specFactor = clamp(dot(halfDir , bumpNormal ) ,0.0 ,1.0);
-    specFactor = pow(specFactor , 60.0 );
-
-    // Calculate cubeMap reflection and add to diffuse
-    vec3 reflectDir = reflect(-viewDir ,normalize(IN.normal));
-    vec4 reflectTex = texture(cubeTex ,reflectDir );
-    //diffuse.rgb = reflectTex.rgb + (diffuse.rgb * 0.25f);
 
     // Calculate refract/reflext tex coords
     vec2 ndc = (IN.clipSpace.xy/IN.clipSpace.w)/2.0 + 0.5;
@@ -102,17 +82,21 @@ void main(void) {
     float refractiveFactor = dot(viewVector, vec3(0.0,1.0,0.0));
     //refractiveFactor = pow(refractiveFactor, 10.0);
 
+    vec4 diffuse = texture(diffuseTex , IN.texCoord );
     diffuse.rgb = mix(reflectColour.rgb,refractColour.rgb,refractiveFactor) + (diffuse.rgb * 0.25f);
 
-    // Calculate final colour
-    vec3 surface = (diffuse.rgb * lightColour.rgb);
-    fragColour.rgb = surface * lambert * attenuation;
-    fragColour.rgb += (lightColour.rgb * specFactor )* attenuation *0.33;
-    fragColour.rgb += surface * 0.1f;
+    vec3 normal = texture2D(bumpTex, IN.texCoord).rgb;
+    normal = normalize(TBN * normalize(normal * 2.0 - 1.0));
 
     // add foam
     float strength = 2;
     float foamAmount = clamp((waterDepth / 25.0) * strength, 0.0,1.0);
-    fragColour.rgb = mix(vec3(1.0,1.0,1.0), fragColour.rgb, foamAmount);
-    fragColour.a = clamp(waterDepth/5.0, 0.0,1.0);
+    // Calculate final colour
+    fragColour[0].rgb = diffuse.rgb * 0.5;
+    fragColour[0].rgb = mix(vec3(1.0,1.0,1.0), fragColour[0].rgb, foamAmount);
+
+    fragColour[1] = vec4(normal.xyz * 0.5 + 0.5, 1.0);
+
+    fragColour[0].a = clamp(waterDepth/5.0, 0.0,1.0);
+    fragColour[1].a = clamp(waterDepth/5.0, 0.0,1.0);
 }
