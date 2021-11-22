@@ -10,12 +10,13 @@ uniform sampler2D dudvMap;
 
 uniform mat4 projMatrix;
 
-uniform vec4 lightColour;
-uniform vec3 lightPos;
-uniform float lightRadius;
-
 uniform vec3 cameraPos;
 uniform float sceneTime;
+
+#define NR_POINT_LIGHTS 10
+uniform vec4 pointLights_lightColour[NR_POINT_LIGHTS];
+uniform vec3 pointLights_lightPos[NR_POINT_LIGHTS];
+uniform float pointLights_lightRadius[NR_POINT_LIGHTS];
 
 const float waveStrength = 0.02;
 const float refractionStrength = 50;
@@ -31,7 +32,7 @@ in Vertex {
     vec3 toCameraVector;
 } IN;
 
-out vec4 fragColour[2];
+out vec4 fragColour;
 
 float linearDepth(float depthSample)
 {
@@ -42,16 +43,36 @@ float linearDepth(float depthSample)
     return zLinear;
 }
 
-void main(void) {
+vec4 CalcPointLight(vec4 texture, vec3 light_pos, float light_radius, vec4 light_colour, vec3 normal){
+    // Light calculations
+    vec3 incident = normalize(light_pos - IN.worldPos );
+    vec3 viewDir = normalize(cameraPos - IN.worldPos );
+    vec3 halfDir = normalize(incident + viewDir );
 
     mat3 TBN = mat3(normalize(IN.tangent),
     normalize(IN.binormal), normalize(IN.normal ));
+
+    float lambert = max(dot(incident , normal), 0.0f);
+    float distance = length(light_pos - IN.worldPos );
+    float attenuation = 1.0f - clamp(distance / light_radius ,0.0 ,1.0);
+    float specFactor = clamp(dot(halfDir , normal ) ,0.0 ,1.0);
+    specFactor = pow(specFactor , 60.0 );
+
+    // Calculate final colour
+    vec3 surface = (texture.rgb * light_colour.rgb);
+    vec4 addedLight = texture;
+    addedLight.rgb = surface * lambert * attenuation;
+    addedLight.rgb += (light_colour.rgb * specFactor )* attenuation *0.33;
+    addedLight.rgb += surface * 0.1f;
+    return addedLight;
+}
+
+void main(void) {
 
     // Calculate refract/reflext tex coords
     vec2 ndc = (IN.clipSpace.xy/IN.clipSpace.w)/2.0 + 0.5;
     vec2 refractTexCoords = vec2(ndc.x,ndc.y);
     vec2 reflectTexCoords = vec2(ndc.x,-ndc.y);
-
     // Calculate depth
     float far = 15000.0;
     float near = 1.0;
@@ -85,18 +106,40 @@ void main(void) {
     vec4 diffuse = texture(diffuseTex , IN.texCoord );
     diffuse.rgb = mix(reflectColour.rgb,refractColour.rgb,refractiveFactor) + (diffuse.rgb * 0.25f);
 
-    vec3 normal = texture2D(bumpTex, IN.texCoord).rgb;
-    normal = normalize(TBN * normalize(normal * 2.0 - 1.0));
-
     // add foam
     float strength = 2;
     float foamAmount = clamp((waterDepth / 25.0) * strength, 0.0,1.0);
-    // Calculate final colour
-    fragColour[0].rgb = diffuse.rgb * 0.5;
-    fragColour[0].rgb = mix(vec3(1.0,1.0,1.0), fragColour[0].rgb, foamAmount);
+    diffuse.rgb = mix(vec3(1.0,1.0,1.0), fragColour.rgb, foamAmount);
 
-    fragColour[1] = vec4(normal.xyz * 0.5 + 0.5, 1.0);
+    mat3 TBN = mat3(normalize(IN.tangent),
+    normalize(IN.binormal), normalize(IN.normal ));
+    vec3 bumpNormal = texture(bumpTex , IN.texCoord ).rgb;
+    bumpNormal = normalize(TBN * normalize(bumpNormal * 2.0 - 1.0));
 
-    fragColour[0].a = clamp(waterDepth/5.0, 0.0,1.0);
-    fragColour[1].a = clamp(waterDepth/5.0, 0.0,1.0);
+    vec3 output;
+    for(int i = 0; i < NR_POINT_LIGHTS; i++){
+        // Light calculations
+        vec3 incident = normalize(pointLights_lightPos[i] - IN.worldPos );
+        vec3 viewDir = normalize(cameraPos - IN.worldPos );
+        vec3 halfDir = normalize(incident + viewDir );
+
+        float lambert = max(dot(incident , bumpNormal), 0.0f);
+        float distance = length(pointLights_lightPos[i] - IN.worldPos );
+        float attenuation = 1.0f - clamp(distance / pointLights_lightRadius[i] ,0.0 ,1.0);
+        float specFactor = clamp(dot(halfDir , bumpNormal ) ,0.0 ,1.0);
+        specFactor = pow(specFactor , 60.0 );
+
+        vec3 surface = (diffuse.rgb * pointLights_lightColour[i].rgb);
+        vec3 ambient = surface * 0.1f;
+        vec3 diffuseLight = surface * lambert * attenuation;
+        vec3 specular =  (pointLights_lightColour[i].rgb * specFactor )* attenuation *0.33;
+        ambient *= attenuation;
+        diffuseLight *= attenuation;
+        specular *= attenuation;    
+
+        output += (ambient + diffuseLight + specular); 
+    }
+    fragColour.rgb = output;
+
+    fragColour.a = clamp(waterDepth/5.0, 0.0,1.0);
 }

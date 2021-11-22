@@ -9,7 +9,7 @@
 #include "../nclgl/TerrainMaterial.h"
 #include  <algorithm>                //For  std::sort ...
 const int POST_PASSES = 10;
-const int LIGHT_NUM = 32;
+const int LIGHT_NUM = 10;
 Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	sphere = Mesh::LoadFromMeshFile("Sphere.msh");
 	root = new SceneNode();
@@ -137,7 +137,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	for (int i = 0; i < LIGHT_NUM; ++i) {
 		Light& l = pointLights[i];
 		l.SetPosition(Vector3(rand() % (int)heightmapSize.x,
-			250.0f,
+			350.0f,
 			rand() % (int)heightmapSize.z));
 
 		/*l.SetColour(Vector4(0.5f + (float)(rand() / (float)RAND_MAX),
@@ -386,13 +386,6 @@ void   Renderer::DrawNodes() {
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-	//DrawSkybox();
-
-	FillBuffers();
-	DrawPointLights();
-	CombineBuffers();
-
-
 
 }
 
@@ -404,7 +397,8 @@ void Renderer::DrawNode(SceneNode* n) {
 			Shader* shader = (Shader*)(material->GetShader());
 			BindShader(shader);
 
-			SetShaderLight(*light);
+			//SetShaderLight(*light);
+			SetShaderLights(shader);
 			material->PassShaderUniforms();
 
 			glUniform3fv(glGetUniformLocation(shader->GetProgram(), "cameraPos"), 1, (float*)& camera->GetPosition());
@@ -428,10 +422,42 @@ void Renderer::DrawNode(SceneNode* n) {
 	}
 }
 
+void Renderer::SetShaderLights(Shader* shader) {
+
+	Vector4 lightColour[LIGHT_NUM];
+	Vector3 lightPos[LIGHT_NUM];
+	float lightRadius[LIGHT_NUM];
+
+	for (int i = 0; i < LIGHT_NUM; ++i) {
+		if (pointLights + i == NULL) continue;
+
+		lightRadius[i] = 0;
+	}
+
+	for (int i = 0; i < LIGHT_NUM; ++i) {
+		if (pointLights + i == NULL) continue;
+
+		Light& l = pointLights[i];
+		lightColour[i] += l.GetColour();
+		lightPos[i] += l.GetPosition();
+		lightRadius[i] += l.GetRadius();
+	}
+
+	GLuint loc = glGetUniformLocation(shader->GetProgram(), "pointLights_lightColour");
+	glUniform4fv(loc, LIGHT_NUM, (float*)& lightColour);
+	loc = glGetUniformLocation(shader->GetProgram(), "pointLights_lightPos");
+	glUniform3fv(loc, LIGHT_NUM, (float*)& lightPos);
+	loc = glGetUniformLocation(shader->GetProgram(), "pointLights_lightRadius");
+	glUniform1fv(loc, LIGHT_NUM, lightRadius);
+}
+
 void  Renderer::RenderScene() {
 	BuildNodeLists(root);
 	SortNodeLists();
 	DrawNodes();
+	FillBuffers();
+	DrawPointLights();
+	CombineBuffers();
 	ClearNodeLists();
 }
 
@@ -466,10 +492,6 @@ void Renderer::FillBuffers() {
 	for (const auto& i : nodeList) {
 		DrawNode(i);
 	}
-
-	/*for (const auto& i : transparentNodeList) {
-		DrawNode(i);
-	}*/
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }

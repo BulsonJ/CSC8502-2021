@@ -74,5 +74,7 @@ protected:
 	GLuint lightDiffuseTex; // Store diffuse lighting
 	GLuint lightSpecularTex; // Store specular lighting
 
+	void SetShaderLights(Shader* shader);
+
 
 };
