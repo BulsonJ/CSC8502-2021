@@ -75,6 +75,7 @@ protected:
 	GLuint lightSpecularTex; // Store specular lighting
 
 	void SetShaderLights(Shader* shader);
+	void GenerateWaterBuffers();
 
 
 };

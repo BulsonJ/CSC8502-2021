@@ -15,7 +15,6 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	root = new SceneNode();
 
 	quad = Mesh::GenerateQuad();
-	quad2 = Mesh::GenerateQuad();
 
 	// Load in shaders and textures
 
@@ -349,7 +348,10 @@ void Renderer::SortNodeLists() {
 		SceneNode::CompareByCameraDistance);
 }
 
-void   Renderer::DrawNodes() {
+void   Renderer::GenerateWaterBuffers() {
+
+	// NEEDS TO BE MOVED AFTER LIGHTING HAS BEEN CALCULATED
+
 	glEnable(GL_CLIP_DISTANCE0);
 	glEnable(GL_CULL_FACE);
 	clipPlane = refractionClipPlane;
@@ -454,7 +456,7 @@ void Renderer::SetShaderLights(Shader* shader) {
 void  Renderer::RenderScene() {
 	BuildNodeLists(root);
 	SortNodeLists();
-	DrawNodes();
+	GenerateWaterBuffers();
 	FillBuffers();
 	DrawPointLights();
 	CombineBuffers();
@@ -488,11 +490,13 @@ void Renderer::DrawSkybox() {
 void Renderer::FillBuffers() {
 	glBindFramebuffer(GL_FRAMEBUFFER, bufferFBO);
 	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+	glDisable(GL_BLEND);
 
+	DrawSkybox();
 	for (const auto& i : nodeList) {
 		DrawNode(i);
 	}
-
+	glEnable(GL_BLEND);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
@@ -573,7 +577,7 @@ void Renderer::CombineBuffers() {
 	glActiveTexture(GL_TEXTURE24);
 	glBindTexture(GL_TEXTURE_2D, lightSpecularTex);
 
-	quad2->Draw();
+	quad->Draw();
 	glDepthMask(GL_TRUE);
 	for (const auto& i : transparentNodeList) {
 		DrawNode(i);

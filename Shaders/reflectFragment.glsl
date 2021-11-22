@@ -109,7 +109,7 @@ void main(void) {
     // add foam
     float strength = 2;
     float foamAmount = clamp((waterDepth / 25.0) * strength, 0.0,1.0);
-    diffuse.rgb = mix(vec3(1.0,1.0,1.0), fragColour.rgb, foamAmount);
+    diffuse.rgb = mix(vec3(1.0,1.0,1.0), diffuse.rgb, foamAmount);
 
     mat3 TBN = mat3(normalize(IN.tangent),
     normalize(IN.binormal), normalize(IN.normal ));
