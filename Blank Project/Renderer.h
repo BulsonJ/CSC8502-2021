@@ -32,8 +32,9 @@ protected:
 	Camera* camera;
 	Frustum frameFrustum;
 	float sceneTime;
-	Light* light;
+	Light* directionalLight;
 	Light* pointLights;
+	Light* spotLights;
 
 	GLuint refractionFBO;
 	GLuint refractionBufferTex;

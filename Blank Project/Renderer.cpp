@@ -141,8 +141,6 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 	camera = new Camera(-45.0f, 0.0f,
 		heightmapSize * Vector3(0.5f, 5.0f, 0.5f));
-	light = new Light(heightmapSize * Vector3(0.5f, 1.5f, 0.5f),
-		Vector4(1, 1, 1, 1), heightmapSize.x);
 
 	pointLights = new Light[LIGHT_NUM];
 
@@ -160,8 +158,6 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 		l.SetRadius(250.0f + (rand() % 250));
 		l.SetRadius(1000.0f);
 	}
-
-	light->SetPosition((pointLights)->GetPosition());
 
 	/*
 	Material* basic = new Material();
@@ -306,7 +302,9 @@ Renderer::~Renderer(void) {
 		delete *it;
 	}
 
+	//delete directionalLight;
 	delete[] pointLights;
+	//delete[] spotLights;
 
 	glDeleteTextures(1, &refractionBufferTex);
 	glDeleteTextures(1, &reflectionBufferTex);
@@ -447,8 +445,8 @@ void  Renderer::RenderScene() {
 	BuildNodeLists(root);
 	SortNodeLists();
 	DrawShadowScene();
-	//GenerateRefractionBuffer();
-	//GenerateReflectionBuffer();
+	GenerateRefractionBuffer();
+	GenerateReflectionBuffer();
 	FillBuffers();
 	DrawPointLights();
 	CombineBuffers();
@@ -576,9 +574,9 @@ void Renderer::CombineBuffers() {
 
 	quad->Draw();
 	glDepthMask(GL_TRUE);
-	/*for (const auto& i : transparentNodeList) {
+	for (const auto& i : transparentNodeList) {
 		DrawNode(i);
-	}*/
+	}
 }
 
 void Renderer::GenerateReflectionBuffer() {
@@ -690,7 +688,7 @@ void Renderer::DrawShadowScene() {
 
 	BindShader(shadowShader);
 	viewMatrix = Matrix4::BuildViewMatrix(
-		light->GetPosition(), Vector3(0, 0, 0));
+		(pointLights)->GetPosition(), Vector3(0, 0, 0));
 	projMatrix = Matrix4::Perspective(1, 5000.0f, 1, 45);
 	shadowMatrix = projMatrix * viewMatrix; //used later
 

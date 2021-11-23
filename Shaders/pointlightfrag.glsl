@@ -50,9 +50,6 @@ void main(void) {
         }
     }
 
- 
-
-
     float lambert = clamp(dot(incident , normal ) ,0.0 ,1.0) ;
     float rFactor = clamp(dot(halfDir , normal ) ,0.0 ,1.0);
     float specFactor = clamp(dot(halfDir , normal ) ,0.0 ,1.0);
