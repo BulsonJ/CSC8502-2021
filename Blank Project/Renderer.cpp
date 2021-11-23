@@ -9,6 +9,7 @@
 #include "../nclgl/TerrainMaterial.h"
 #include  <algorithm>                //For  std::sort ...
 const int POST_PASSES = 10;
+#define SHADOWSIZE 2048
 const int LIGHT_NUM = 10;
 Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	sphere = Mesh::LoadFromMeshFile("Sphere.msh");
@@ -26,6 +27,12 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 		"pointlightfrag.glsl");
 	combineShader = new Shader("combinevert.glsl",
 		"combinefrag.glsl");
+
+	shadowShader = new Shader("shadowVert.glsl", "shadowFrag.glsl");
+	shaders.emplace_back(shadowShader);
+	shaders.emplace_back(combineShader);
+	shaders.emplace_back(pointlightShader);
+
 
 	textures.emplace_back(SOIL_load_OGL_texture(
 		TEXTUREDIR"Barren Reds.JPG", SOIL_LOAD_AUTO,
@@ -108,6 +115,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	root->AddChild(heightMap);
 	materials.emplace_back(heightMat);
 	heightmapSize = heightMapMesh->GetHeightmapSize();
+	heightMap->SetBoundingRadius(heightmapSize.x);
 
 	// Create water
 	SceneNode* water = new SceneNode();
@@ -122,6 +130,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	water->SetColour(Vector4(1.0, 1.0, 1.0, 0.5));
 	water->SetTransform(Matrix4::Translation(Vector3(0, 150, 0)));
 	water->SetMaterial(waterMat);
+	water->SetBoundingRadius(heightmapSize.x);
 
 	root->AddChild(water);
 	materials.emplace_back(waterMat);
@@ -147,6 +156,8 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 		l.SetRadius(250.0f + (rand() % 250));
 		l.SetRadius(1000.0f);
 	}
+
+	light->SetPosition((pointLights+1)->GetPosition());
 
 	projMatrix = Matrix4::Perspective(1.0f, 15000.0f,
 		(float)width / (float)height, 45.0f);
@@ -179,20 +190,6 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	glBindFramebuffer(GL_FRAMEBUFFER, reflectionFBO);
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
 			GL_TEXTURE_2D, reflectionBufferTex, 0);
-
-	// Depth buffer ( should be able to be combined with refraction)
-	glGenTextures(1, &waterDepthTex);
-	glBindTexture(GL_TEXTURE_2D, waterDepthTex);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0);
-
-	glGenFramebuffers(1, &depthFBO);
-	glBindFramebuffer(GL_FRAMEBUFFER, depthFBO);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
-		GL_TEXTURE_2D, waterDepthTex, 0);
 
 	//We can check FBO attachment success using this command!
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) !=
@@ -247,11 +244,35 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 		return;
 	}
 
-	glBindBuffer(GL_BUFFER, 0);
+	// Generate shadow texture and buffer
+	glGenTextures(1, &shadowTex);
+	glBindTexture(GL_TEXTURE_2D, shadowTex);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT,
+		SHADOWSIZE, SHADOWSIZE, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	glGenFramebuffers(1, &shadowFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, shadowFBO);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+			GL_TEXTURE_2D, shadowTex, 0);
+	glDrawBuffer(GL_NONE);
+
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) !=
+		GL_FRAMEBUFFER_COMPLETE) {
+		return;
+	}
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
+
 
 	sceneTime = 0.0f;
 	init = true;
@@ -269,18 +290,13 @@ Renderer::~Renderer(void) {
 	for (auto it = materials.begin(); it != materials.end(); it++) {
 		delete *it;
 	}
-	delete quad;
 
-	delete pointlightShader;
-	delete combineShader;
 	delete[] pointLights;
 
 	glDeleteTextures(1, &refractionBufferTex);
 	glDeleteTextures(1, &reflectionBufferTex);
-	glDeleteTextures(1, &waterDepthTex);
 	glDeleteFramebuffers(1, &refractionFBO);
 	glDeleteFramebuffers(1, &reflectionFBO);
-	glDeleteFramebuffers(1, &depthFBO);
 
 	glDeleteTextures(1, &bufferColourTex);
 	glDeleteTextures(1, &bufferNormalTex);
@@ -290,6 +306,9 @@ Renderer::~Renderer(void) {
 
 	glDeleteFramebuffers(1, &bufferFBO);
 	glDeleteFramebuffers(1, &pointLightFBO);
+
+	glDeleteTextures(1, &shadowTex);
+	glDeleteFramebuffers(1, &shadowFBO);
 }
 
 void Renderer::GenerateScreenTexture(GLuint& into, bool depth) {
@@ -321,8 +340,8 @@ void Renderer::UpdateScene(float dt) {
 }
 
 void   Renderer::BuildNodeLists(SceneNode* from) {
-	//if (frameFrustum.InsideFrustum(*from)) {
-	if (true) {
+	if (frameFrustum.InsideFrustum(*from)) {
+	//if (true) {
 		Vector3  dir = from->GetWorldTransform().GetPositionVector() - camera->GetPosition();
 		from->SetCameraDistance(Vector3::Dot(dir, dir));
 		if (from->GetColour().w < 1.0f) {
@@ -348,49 +367,6 @@ void Renderer::SortNodeLists() {
 		SceneNode::CompareByCameraDistance);
 }
 
-void   Renderer::GenerateWaterBuffers() {
-
-	// NEEDS TO BE MOVED AFTER LIGHTING HAS BEEN CALCULATED
-
-	glEnable(GL_CLIP_DISTANCE0);
-	glEnable(GL_CULL_FACE);
-	clipPlane = refractionClipPlane;
-	glBindFramebuffer(GL_FRAMEBUFFER, refractionFBO);
-	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-	for (const auto& i : nodeList) {
-		DrawNode(i);
-	}
-
-	clipPlane = reflectionClipPlane;
-	float distance = 2 * (camera->GetPosition().y - (refractionClipPlane.w - 2.5));
-	camera->SetPosition(Vector3(camera->GetPosition().x,camera->GetPosition().y - distance, camera->GetPosition().z));
-	camera->SetPitch(-camera->GetPitch());
-	viewMatrix = camera->BuildViewMatrix();
-
-	glBindFramebuffer(GL_FRAMEBUFFER, reflectionFBO);
-	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-	DrawSkybox();
-	for (const auto& i : nodeList) {
-		DrawNode(i);
-	}
-	camera->SetPosition(Vector3(camera->GetPosition().x, camera->GetPosition().y + distance, camera->GetPosition().z));
-	camera->SetPitch(-camera->GetPitch());
-	viewMatrix = camera->BuildViewMatrix();
-
-	//glDisable(GL_CULL_FACE);
-	glDisable(GL_CLIP_DISTANCE0);
-
-	glBindFramebuffer(GL_FRAMEBUFFER, depthFBO);
-	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-	for (const auto& i : nodeList) {
-		DrawNode(i);
-	}
-
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-
-}
-
 void Renderer::DrawNode(SceneNode* n) {
 
 	if (n->GetMesh()) {
@@ -399,7 +375,6 @@ void Renderer::DrawNode(SceneNode* n) {
 			Shader* shader = (Shader*)(material->GetShader());
 			BindShader(shader);
 
-			//SetShaderLight(*light);
 			SetShaderLights(shader);
 			material->PassShaderUniforms();
 
@@ -408,7 +383,7 @@ void Renderer::DrawNode(SceneNode* n) {
 			glUniform1f(glGetUniformLocation(shader->GetProgram(), "sceneTime"), sceneTime);
 
 			glActiveTexture(GL_TEXTURE15);
-			glBindTexture(GL_TEXTURE_2D, waterDepthTex);
+			glBindTexture(GL_TEXTURE_2D, bufferDepthTex);
 			glUniform1i(glGetUniformLocation(shader->GetProgram(), "depthTex"), 15);
 
 			glUniform4fv(glGetUniformLocation(shader->GetProgram(), "plane"), 1, (float*)&clipPlane);
@@ -456,9 +431,11 @@ void Renderer::SetShaderLights(Shader* shader) {
 void  Renderer::RenderScene() {
 	BuildNodeLists(root);
 	SortNodeLists();
-	GenerateWaterBuffers();
+	GenerateRefractionBuffer();
+	GenerateReflectionBuffer();
 	FillBuffers();
 	DrawPointLights();
+	DrawShadowScene();
 	CombineBuffers();
 	ClearNodeLists();
 }
@@ -577,9 +554,146 @@ void Renderer::CombineBuffers() {
 	glActiveTexture(GL_TEXTURE24);
 	glBindTexture(GL_TEXTURE_2D, lightSpecularTex);
 
+	glUniform1i(glGetUniformLocation(combineShader->GetProgram(),
+		"shadowTex"), 25);
+	glActiveTexture(GL_TEXTURE25);
+	glBindTexture(GL_TEXTURE_2D, shadowTex);
+
+	glUniform1i(glGetUniformLocation(combineShader->GetProgram(),
+		"depthTex"), 26);
+	glActiveTexture(GL_TEXTURE26);
+	glBindTexture(GL_TEXTURE_2D, bufferDepthTex);
+
 	quad->Draw();
 	glDepthMask(GL_TRUE);
 	for (const auto& i : transparentNodeList) {
 		DrawNode(i);
 	}
+}
+
+void Renderer::GenerateReflectionBuffer() {
+	// Enable clipping distance and set clipping plane
+	glEnable(GL_CLIP_DISTANCE0);
+	glEnable(GL_CULL_FACE);
+	clipPlane = reflectionClipPlane;
+	// Move camera down, 2 * the distance to the refraction clipping plane height(water height)
+	// and invert the camera pitch
+	float distance = 2 * (camera->GetPosition().y - (refractionClipPlane.w - 2.5));
+	camera->SetPosition(Vector3(camera->GetPosition().x, camera->GetPosition().y - distance, camera->GetPosition().z));
+	camera->SetPitch(-camera->GetPitch());
+	viewMatrix = camera->BuildViewMatrix();
+
+	// Draw reflection to GBuffer
+	glBindFramebuffer(GL_FRAMEBUFFER, bufferFBO);
+	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+	// Disable blend to allow skybox to be drawn at alpha 0.0 and still have colour
+	glDisable(GL_BLEND);
+	DrawSkybox();
+	glEnable(GL_BLEND);
+	for (const auto& i : nodeList) {
+		DrawNode(i);
+	}
+	camera->SetPosition(Vector3(camera->GetPosition().x, camera->GetPosition().y + distance, camera->GetPosition().z));
+	camera->SetPitch(-camera->GetPitch());
+	viewMatrix = camera->BuildViewMatrix();
+	glDisable(GL_CLIP_DISTANCE0);
+	glDisable(GL_CULL_FACE);
+
+	// Draw lights for GBuffer
+	DrawPointLights();
+
+	// Combine GBuffer with light information, store in reflection FBO
+	glBindFramebuffer(GL_FRAMEBUFFER, reflectionFBO);
+	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+	glDepthMask(GL_FALSE);
+
+	BindShader(combineShader);
+	UpdateShaderMatrices();
+
+	glUniform1i(glGetUniformLocation(
+		combineShader->GetProgram(), "diffuseTex"), 22);
+	glActiveTexture(GL_TEXTURE22);
+	glBindTexture(GL_TEXTURE_2D, bufferColourTex);
+
+	glUniform1i(glGetUniformLocation(
+		combineShader->GetProgram(), "diffuseLight"), 23);
+	glActiveTexture(GL_TEXTURE23);
+	glBindTexture(GL_TEXTURE_2D, lightDiffuseTex);
+
+	glUniform1i(glGetUniformLocation(
+		combineShader->GetProgram(), "specularLight"), 24);
+	glActiveTexture(GL_TEXTURE24);
+	glBindTexture(GL_TEXTURE_2D, lightSpecularTex);
+
+	quad->Draw();
+	glDepthMask(GL_TRUE);
+}
+
+void Renderer::GenerateRefractionBuffer() {
+	// Enable clip distance and set clip plane
+	glBindFramebuffer(GL_FRAMEBUFFER, bufferFBO);
+	glEnable(GL_CLIP_DISTANCE0);
+	clipPlane = refractionClipPlane;
+
+	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+	for (const auto& i : nodeList) {
+		DrawNode(i);
+	}
+	glDisable(GL_CLIP_DISTANCE0);
+
+	// Draw point lights on GBuffer information
+	DrawPointLights();
+
+	// Combine GBuffer with light information, store in refraction FBO
+	glBindFramebuffer(GL_FRAMEBUFFER, refractionFBO);
+	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+	glDepthMask(GL_FALSE);
+
+	BindShader(combineShader);
+	UpdateShaderMatrices();
+
+	glUniform1i(glGetUniformLocation(
+		combineShader->GetProgram(), "diffuseTex"), 22);
+	glActiveTexture(GL_TEXTURE22);
+	glBindTexture(GL_TEXTURE_2D, bufferColourTex);
+
+	glUniform1i(glGetUniformLocation(
+		combineShader->GetProgram(), "diffuseLight"), 23);
+	glActiveTexture(GL_TEXTURE23);
+	glBindTexture(GL_TEXTURE_2D, lightDiffuseTex);
+
+	glUniform1i(glGetUniformLocation(
+		combineShader->GetProgram(), "specularLight"), 24);
+	glActiveTexture(GL_TEXTURE24);
+	glBindTexture(GL_TEXTURE_2D, lightSpecularTex);
+
+	quad->Draw();
+	glDepthMask(GL_TRUE);
+}
+
+void Renderer::DrawShadowScene() {
+	glBindFramebuffer(GL_FRAMEBUFFER, shadowFBO);
+
+	glClear(GL_DEPTH_BUFFER_BIT);
+	glViewport(0, 0, SHADOWSIZE, SHADOWSIZE);
+	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+
+	BindShader(shadowShader);
+	viewMatrix = Matrix4::BuildViewMatrix(
+		light->GetPosition(), Vector3(0, 0, 0));
+	projMatrix = Matrix4::Perspective(1, 15000.0f, 1, 45);
+	shadowMatrix = projMatrix * viewMatrix; //used later
+
+	for (const auto& i : nodeList) {
+		modelMatrix = i->GetWorldTransform() * Matrix4::Scale(i->GetModelScale());
+		UpdateShaderMatrices();
+		i->Draw(*this);
+	}
+	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+	glViewport(0, 0, width, height);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	projMatrix = Matrix4::Perspective(1.0f, 15000.0f,
+		(float)width / (float)height, 45.0f);
+	viewMatrix = camera->BuildViewMatrix();
 }

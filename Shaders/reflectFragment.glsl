@@ -138,6 +138,7 @@ void main(void) {
         specular *= attenuation;    
 
         output += (ambient + diffuseLight + specular); 
+        // (specular + diffuse * shadow)
     }
     fragColour.rgb = output;
 

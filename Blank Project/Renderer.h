@@ -43,9 +43,6 @@ protected:
 	GLuint reflectionBufferTex;
 	Vector4 reflectionClipPlane;
 
-	GLuint depthFBO;
-	GLuint waterDepthTex;
-
 	Mesh* quad;
 	vector<Material*> materials;
 	vector<Shader*> shaders;
@@ -75,7 +72,16 @@ protected:
 	GLuint lightSpecularTex; // Store specular lighting
 
 	void SetShaderLights(Shader* shader);
-	void GenerateWaterBuffers();
+	void GenerateRefractionBuffer();
+	void GenerateReflectionBuffer();
 
+	void DrawShadowScene();
+	void DrawMainScene();
+
+	GLuint shadowTex;
+	GLuint shadowFBO;
+
+	Shader* sceneShader;
+	Shader* shadowShader;
 
 };
