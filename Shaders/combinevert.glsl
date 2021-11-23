@@ -3,8 +3,10 @@
 in vec3 position;
 in vec2 texCoord;
 
+
 out Vertex {
     vec2 texCoord;
+    vec4 shadowProj;
 } OUT;
 
 void main(void) {

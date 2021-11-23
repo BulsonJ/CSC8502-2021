@@ -10,7 +10,7 @@
 #include  <algorithm>                //For  std::sort ...
 const int POST_PASSES = 10;
 #define SHADOWSIZE 2048
-const int LIGHT_NUM = 10;
+const int LIGHT_NUM = 1;
 Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	sphere = Mesh::LoadFromMeshFile("Sphere.msh");
 	root = new SceneNode();
@@ -28,10 +28,14 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	combineShader = new Shader("combinevert.glsl",
 		"combinefrag.glsl");
 
+	Shader* basicShader = new Shader("TexturedVertex.glsl",
+		"TexturedFragment.glsl");
+
 	shadowShader = new Shader("shadowVert.glsl", "shadowFrag.glsl");
 	shaders.emplace_back(shadowShader);
 	shaders.emplace_back(combineShader);
 	shaders.emplace_back(pointlightShader);
+	shaders.emplace_back(basicShader);
 
 
 	textures.emplace_back(SOIL_load_OGL_texture(
@@ -157,7 +161,18 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 		l.SetRadius(1000.0f);
 	}
 
-	light->SetPosition((pointLights+1)->GetPosition());
+	light->SetPosition((pointLights)->GetPosition());
+
+	/*
+	Material* basic = new Material();
+	basic->SetShader(basicShader);
+	basic->SetTexture(textures[0]);
+	SceneNode* test = new SceneNode();
+	test->SetMesh(sphere);
+	test->SetMaterial(basic);
+	//test->SetTransform(Matrix4::Translation(light->GetPosition() + Vector3(-100,0,-0)));
+	test->SetModelScale(Vector3(10, 10, 10));
+	root->AddChild(test);*/
 
 	projMatrix = Matrix4::Perspective(1.0f, 15000.0f,
 		(float)width / (float)height, 45.0f);
@@ -431,11 +446,11 @@ void Renderer::SetShaderLights(Shader* shader) {
 void  Renderer::RenderScene() {
 	BuildNodeLists(root);
 	SortNodeLists();
-	GenerateRefractionBuffer();
-	GenerateReflectionBuffer();
+	DrawShadowScene();
+	//GenerateRefractionBuffer();
+	//GenerateReflectionBuffer();
 	FillBuffers();
 	DrawPointLights();
-	DrawShadowScene();
 	CombineBuffers();
 	ClearNodeLists();
 }
@@ -498,6 +513,11 @@ void Renderer::DrawPointLights() {
 	glActiveTexture(GL_TEXTURE21);
 	glBindTexture(GL_TEXTURE_2D, bufferNormalTex);
 
+	glUniform1i(glGetUniformLocation(
+		pointlightShader->GetProgram(), "shadowTex"), 22);
+	glActiveTexture(GL_TEXTURE22);
+	glBindTexture(GL_TEXTURE_2D, shadowTex);
+
 	glUniform3fv(glGetUniformLocation(pointlightShader->GetProgram(),
 		"cameraPos"), 1, (float*)& camera->GetPosition());
 
@@ -534,41 +554,31 @@ void Renderer::CombineBuffers() {
 	glDepthMask(GL_FALSE);
 
 	BindShader(combineShader);
-	//modelMatrix.ToIdentity();
+	modelMatrix.ToIdentity();
 	//viewMatrix.ToIdentity();
 	//projMatrix.ToIdentity();
 	UpdateShaderMatrices();
 
 	glUniform1i(glGetUniformLocation(
-		combineShader->GetProgram(), "diffuseTex"), 22);
-	glActiveTexture(GL_TEXTURE22);
+		combineShader->GetProgram(), "diffuseTex"), 23);
+	glActiveTexture(GL_TEXTURE23);
 	glBindTexture(GL_TEXTURE_2D, bufferColourTex);
 
 	glUniform1i(glGetUniformLocation(
-		combineShader->GetProgram(), "diffuseLight"),23);
-	glActiveTexture(GL_TEXTURE23);
+		combineShader->GetProgram(), "diffuseLight"),24);
+	glActiveTexture(GL_TEXTURE24);
 	glBindTexture(GL_TEXTURE_2D, lightDiffuseTex);
 
 	glUniform1i(glGetUniformLocation(
-		combineShader->GetProgram(), "specularLight"), 24);
-	glActiveTexture(GL_TEXTURE24);
-	glBindTexture(GL_TEXTURE_2D, lightSpecularTex);
-
-	glUniform1i(glGetUniformLocation(combineShader->GetProgram(),
-		"shadowTex"), 25);
+		combineShader->GetProgram(), "specularLight"), 25);
 	glActiveTexture(GL_TEXTURE25);
-	glBindTexture(GL_TEXTURE_2D, shadowTex);
-
-	glUniform1i(glGetUniformLocation(combineShader->GetProgram(),
-		"depthTex"), 26);
-	glActiveTexture(GL_TEXTURE26);
-	glBindTexture(GL_TEXTURE_2D, bufferDepthTex);
+	glBindTexture(GL_TEXTURE_2D, lightSpecularTex);
 
 	quad->Draw();
 	glDepthMask(GL_TRUE);
-	for (const auto& i : transparentNodeList) {
+	/*for (const auto& i : transparentNodeList) {
 		DrawNode(i);
-	}
+	}*/
 }
 
 void Renderer::GenerateReflectionBuffer() {
@@ -681,7 +691,7 @@ void Renderer::DrawShadowScene() {
 	BindShader(shadowShader);
 	viewMatrix = Matrix4::BuildViewMatrix(
 		light->GetPosition(), Vector3(0, 0, 0));
-	projMatrix = Matrix4::Perspective(1, 15000.0f, 1, 45);
+	projMatrix = Matrix4::Perspective(1, 5000.0f, 1, 45);
 	shadowMatrix = projMatrix * viewMatrix; //used later
 
 	for (const auto& i : nodeList) {

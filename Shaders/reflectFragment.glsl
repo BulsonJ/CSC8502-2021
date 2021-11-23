@@ -13,7 +13,7 @@ uniform mat4 projMatrix;
 uniform vec3 cameraPos;
 uniform float sceneTime;
 
-#define NR_POINT_LIGHTS 10
+#define NR_POINT_LIGHTS 1
 uniform vec4 pointLights_lightColour[NR_POINT_LIGHTS];
 uniform vec3 pointLights_lightPos[NR_POINT_LIGHTS];
 uniform float pointLights_lightRadius[NR_POINT_LIGHTS];
