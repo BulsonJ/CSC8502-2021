@@ -11,7 +11,7 @@ uniform vec3 cameraPos;
 
 uniform float lightRadius;
 uniform vec3 lightPos;
-uniform vec3 lightTargetPos;
+uniform vec3 lightDirection;
 uniform vec4 lightColour;
 uniform mat4 inverseProjView;
 
@@ -36,7 +36,7 @@ void main(void) {
     vec3 incident = normalize(lightPos - worldPos );
     vec3 viewDir = normalize(cameraPos - worldPos );
     vec3 halfDir = normalize(incident + viewDir );
-
+    
     float shadow = 1.0; //New!
     vec4 pushVal = vec4(normal , 0) * dot(viewDir , normal );
     vec4 shadowProj = shadowMatrix * (vec4(worldPos,1.0)+pushVal);
@@ -51,7 +51,7 @@ void main(void) {
         }
     }
 
-    float theta = dot(lightPos - worldPos, normalize(-lightTargetPos));
+    float theta = dot(lightPos - worldPos, normalize(-lightDirection));
     if(theta > lightRadius){
         float lambert = clamp(dot(incident , normal ) ,0.0 ,1.0) ;
         float rFactor = clamp(dot(halfDir , normal ) ,0.0 ,1.0);

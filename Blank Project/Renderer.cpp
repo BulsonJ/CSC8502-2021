@@ -655,14 +655,13 @@ void Renderer::DrawSpotLights() {
 	for (int i = 0; i < SPOT_LIGHT_NUM; ++i) {
 
 		SpotLight& l = spotLights[i];
-		modelMatrix = Matrix4::Translation(l.GetPosition()) * Matrix4::Rotation(-90, Vector3(1,0,0));
+		modelMatrix = Matrix4::Rotation(90, Vector3(1,0,0));
 		UpdateShaderMatrices();
 		SetShaderLight(l);
 		glUniform1i(glGetUniformLocation(spotlightShader->GetProgram(), "shadowTex"), 22);
 		glActiveTexture(GL_TEXTURE22);
 		glBindTexture(GL_TEXTURE_2D, l.GetShadowTex());
-		glUniform3fv(glGetUniformLocation(spotlightShader->GetProgram(),
-			"lightTargetPos"), 1, (float*)& l.GetDirection());
+		glUniform3fv(glGetUniformLocation(spotlightShader->GetProgram(),"lightDirection"), 1, (float*)& l.GetDirection());
 		glUniformMatrix4fv(glGetUniformLocation(spotlightShader->GetProgram(), "shadowMatrix"), 1, false, l.GetShadowMatrix().values);
 		cone->Draw();
 
