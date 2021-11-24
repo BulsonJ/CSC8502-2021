@@ -16,10 +16,15 @@ uniform float sceneTime;
 uniform vec3 lightPos;
 uniform vec4 lightColour;
 
-#define NR_POINT_LIGHTS 1
+#define NR_POINT_LIGHTS 5
 uniform vec4 pointLights_lightColour[NR_POINT_LIGHTS];
 uniform vec3 pointLights_lightPos[NR_POINT_LIGHTS];
 uniform float pointLights_lightRadius[NR_POINT_LIGHTS];
+
+#define NR_SPOT_LIGHTS 5
+uniform vec3 spotLights_lightPos[NR_SPOT_LIGHTS];
+uniform vec3 spotLights_lightDirection[NR_SPOT_LIGHTS];
+uniform vec4 spotLights_lightColour[NR_SPOT_LIGHTS];
 
 const float waveStrength = 0.02;
 const float refractionStrength = 50;
@@ -60,6 +65,33 @@ vec3 CalcDirLight(vec4 texture, vec3 light_pos, vec4 light_colour, vec3 normal){
     vec3 diffuseLight = surface * lambert;
     vec3 specular =  (light_colour.rgb * specFactor ) * 0.33;
     return (ambient + diffuseLight + specular);
+}
+
+vec3 CalcSpotLight(vec4 texture, vec3 light_pos, vec3 light_direction,vec4 light_colour, float light_distance,  float light_cutoff, vec3 normal){
+    float theta = dot(light_pos - IN.worldPos, normalize(-light_direction));
+    
+    if(theta > light_cutoff) {
+        vec3 incident = normalize(light_pos - IN.worldPos );
+        vec3 viewDir = normalize(cameraPos - IN.worldPos );
+        vec3 halfDir = normalize(incident + viewDir );
+
+        float lambert = max(dot(incident , normal), 0.0f);
+        float distance = length(light_pos - IN.worldPos );
+        float attenuation = 1.0f - clamp(distance / light_distance ,0.0 ,1.0);
+        float specFactor = clamp(dot(halfDir , normal ) ,0.0 ,1.0);
+        specFactor = pow(specFactor , 60.0 );
+
+        vec3 surface = (texture.rgb * light_colour.rgb);
+        vec3 ambient = surface * 0.1f;
+        vec3 diffuseLight = surface * lambert * attenuation;
+        vec3 specular =  (light_colour.rgb * specFactor )* attenuation *0.33;
+        ambient *= attenuation;
+        diffuseLight *= attenuation;
+        specular *= attenuation;    
+
+        return (ambient + diffuseLight + specular);
+    } 
+    return vec3(0,0,0);
 }
 
 vec3 CalcPointLight(vec4 texture, vec3 light_pos, float light_radius, vec4 light_colour, vec3 normal){
@@ -139,6 +171,9 @@ void main(void) {
         output += CalcPointLight(diffuse, pointLights_lightPos[i],pointLights_lightRadius[i],pointLights_lightColour[i], bumpNormal); 
         // (specular + diffuse * shadow)
     }
+    for(int i = 0; i < NR_SPOT_LIGHTS; i++){
+        output += CalcSpotLight(diffuse, spotLights_lightPos[i],spotLights_lightDirection[i], spotLights_lightColour[i],500.0f, 30.0f,bumpNormal);
+    }   
     fragColour.rgb = output;
 
     fragColour.a = clamp(waterDepth/5.0, 0.0,1.0);

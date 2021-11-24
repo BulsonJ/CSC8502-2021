@@ -11,8 +11,8 @@
 #include  <algorithm>                //For  std::sort ...
 const int POST_PASSES = 10;
 #define SHADOWSIZE 2048
-const int POINT_LIGHT_NUM = 1;
-const int SPOT_LIGHT_NUM = 1;
+const int POINT_LIGHT_NUM = 5;
+const int SPOT_LIGHT_NUM = 5;
 Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	sphere = Mesh::LoadFromMeshFile("Sphere.msh");
 	root = new SceneNode();
@@ -176,7 +176,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 			1));*/
 		l.SetColour(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 		l.SetRadius(45.0f);
-		l.SetTargetPosition(Vector3(-1, 0, 0));
+		l.SetDirection(Vector3(0, -1, 0));
 		l.CreateShadowFBO();
 	}
 
@@ -436,9 +436,29 @@ void Renderer::SetShaderLights(Shader* shader) {
 	glUniform3fv(loc, POINT_LIGHT_NUM, (float*)& lightPos);
 	loc = glGetUniformLocation(shader->GetProgram(), "pointLights_lightRadius");
 	glUniform1fv(loc, POINT_LIGHT_NUM, lightRadius);
+
+	Vector4 spotlightColour[SPOT_LIGHT_NUM];
+	Vector3 spotlightPos[SPOT_LIGHT_NUM];
+	Vector3 spotlightDirection[SPOT_LIGHT_NUM];
+
+	for (int i = 0; i < SPOT_LIGHT_NUM; ++i) {
+		if (spotLights + i == NULL) continue;
+
+		SpotLight& l = spotLights[i];
+		spotlightColour[i] += l.GetColour();
+		spotlightPos[i] += l.GetPosition();
+		spotlightDirection[i] += l.GetDirection();
+	}
+
+	loc = glGetUniformLocation(shader->GetProgram(), "spotLights_lightColour");
+	glUniform4fv(loc, SPOT_LIGHT_NUM, (float*)& spotlightColour);
+	loc = glGetUniformLocation(shader->GetProgram(), "spotLights_lightPos");
+	glUniform3fv(loc, SPOT_LIGHT_NUM, (float*)& spotlightPos);
+	loc = glGetUniformLocation(shader->GetProgram(), "spotLights_lightDirection");
+	glUniform3fv(loc, SPOT_LIGHT_NUM, (float*)& spotlightDirection);
 }
 
-void  Renderer::RenderScene() {
+void Renderer::RenderScene() {
 	BuildNodeLists(root);
 	SortNodeLists();
 	DrawShadowScene();
@@ -599,9 +619,11 @@ void Renderer::DrawPointLights() {
 
 void Renderer::DrawSpotLights() {
 	glBindFramebuffer(GL_FRAMEBUFFER, pointLightFBO);
+	BindShader(spotlightShader);
+
+	// Delete after test
 	glClearColor(0, 0, 0, 1);
 	glClear(GL_COLOR_BUFFER_BIT);
-	BindShader(spotlightShader);
 
 	glBlendFunc(GL_ONE, GL_ONE);
 	glCullFace(GL_FRONT);
@@ -633,16 +655,16 @@ void Renderer::DrawSpotLights() {
 	for (int i = 0; i < SPOT_LIGHT_NUM; ++i) {
 
 		SpotLight& l = spotLights[i];
-		//modelMatrix = Matrix4::BuildViewMatrix(l.GetPosition(), l.GetPosition() - (l.GetTargetPosition()));
+		modelMatrix = Matrix4::Translation(l.GetPosition()) * Matrix4::Rotation(-90, Vector3(1,0,0));
 		UpdateShaderMatrices();
 		SetShaderLight(l);
 		glUniform1i(glGetUniformLocation(spotlightShader->GetProgram(), "shadowTex"), 22);
 		glActiveTexture(GL_TEXTURE22);
 		glBindTexture(GL_TEXTURE_2D, l.GetShadowTex());
 		glUniform3fv(glGetUniformLocation(spotlightShader->GetProgram(),
-			"lightTargetPos"), 1, (float*)& l.GetTargetPosition());
+			"lightTargetPos"), 1, (float*)& l.GetDirection());
 		glUniformMatrix4fv(glGetUniformLocation(spotlightShader->GetProgram(), "shadowMatrix"), 1, false, l.GetShadowMatrix().values);
-		sphere->Draw();
+		cone->Draw();
 
 	}
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -690,9 +712,9 @@ void Renderer::CombineBuffers() {
 
 	quad->Draw();
 	glDepthMask(GL_TRUE);
-	/*for (const auto& i : transparentNodeList) {
+	for (const auto& i : transparentNodeList) {
 		DrawNode(i);
-	}*/
+	}
 }
 
 void Renderer::GenerateReflectionBuffer() {
@@ -870,8 +892,8 @@ void Renderer::DrawSpotLightsShadow() {
 		glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 
 		BindShader(shadowShader);
-		viewMatrix = Matrix4::BuildViewMatrix(l.GetPosition(), l.GetPosition() - (l.GetTargetPosition()));
-		projMatrix = Matrix4::Perspective(1, 5000.0f, 1, 45);
+		viewMatrix = Matrix4::BuildViewMatrix(l.GetPosition(), l.GetDirection() + l.GetPosition());
+		projMatrix = Matrix4::Perspective(1, 5000.0f, 1, 45.0f);
 		shadowMatrix = projMatrix * viewMatrix; //used later
 		l.SetShadowMatrix(shadowMatrix);
 

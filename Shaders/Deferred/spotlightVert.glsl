@@ -11,7 +11,5 @@ uniform vec3 lightPos;
 uniform vec4 lightColour;
 
 void main(void) {
-    vec3 scale = vec3(500);
-    vec3 worldPos = (position*scale) + lightPos;
-    gl_Position = (projMatrix * viewMatrix) * vec4(worldPos , 1.0);
+    gl_Position = (projMatrix * viewMatrix *  modelMatrix) * vec4(position * 1000, 1.0);
 }

@@ -51,7 +51,7 @@ void main(void) {
         }
     }
 
-    float theta = dot(incident, normalize(-lightTargetPos));
+    float theta = dot(lightPos - worldPos, normalize(-lightTargetPos));
     if(theta > lightRadius){
         float lambert = clamp(dot(incident , normal ) ,0.0 ,1.0) ;
         float rFactor = clamp(dot(halfDir , normal ) ,0.0 ,1.0);

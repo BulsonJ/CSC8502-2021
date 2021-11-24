@@ -17,11 +17,11 @@ public:
 	Matrix4 GetShadowMatrix() const { return shadowMatrix; }
 	void SetShadowMatrix(const Matrix4 matrix) { shadowMatrix = matrix; }
 
-	Vector3 GetTargetPosition() const { return targetPos; }
-	void SetTargetPosition(const Vector3& val) { targetPos = val; }
+	Vector3 GetDirection() const { return direction; }
+	void SetDirection(const Vector3& val) { direction = val; }
 
 protected:
-	Vector3 targetPos;
+	Vector3 direction;
 
 	Matrix4 shadowMatrix;
 
