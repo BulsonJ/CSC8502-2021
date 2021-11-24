@@ -8,6 +8,7 @@ class  SceneNode;
 class  Mesh;
 class  Shader;
 class Material;
+class SpotLight;
 class  Renderer : public  OGLRenderer {
 public:
 	Renderer(Window& parent);
@@ -35,7 +36,7 @@ protected:
 
 	Light* directionalLight;
 	Light* pointLights;
-	Light* spotLights;
+	SpotLight* spotLights;
 
 	Shader* directionallightShader;
 	Shader* pointlightShader; // Shader to calculate lighting
@@ -52,6 +53,7 @@ protected:
 
 	Mesh* quad;
 	Mesh* sphere; // Light volume
+	Mesh* cone;
 
 	vector<Material*> materials;
 	vector<Shader*> shaders;
@@ -84,6 +86,7 @@ protected:
 	GLuint pointLightFBO; //FBO for our lighting pass
 	GLuint lightDiffuseTex; // Store diffuse lighting
 	GLuint lightSpecularTex; // Store specular lighting
+
 
 	void SetShaderLights(Shader* shader);
 	void GenerateRefractionBuffer();

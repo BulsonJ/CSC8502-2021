@@ -48,6 +48,7 @@
     <ClCompile Include="TerrainMaterial.cpp">
       <Filter>Materials</Filter>
     </ClCompile>
+    <ClCompile Include="SpotLight.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common.h" />
@@ -107,6 +108,7 @@
     <ClInclude Include="TerrainMaterial.h">
       <Filter>Materials</Filter>
     </ClInclude>
+    <ClInclude Include="SpotLight.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="GLAD">

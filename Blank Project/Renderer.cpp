@@ -4,18 +4,19 @@
 #include "../nclgl/Camera.h"
 #include "../nclgl/HeightMap.h"
 #include "../nclgl/Light.h"
+#include "../nclgl/SpotLight.h"
 #include "../nclgl/Material.h"
 #include "../nclgl/WaveMaterial.h"
 #include "../nclgl/TerrainMaterial.h"
 #include  <algorithm>                //For  std::sort ...
 const int POST_PASSES = 10;
 #define SHADOWSIZE 2048
-const int POINT_LIGHT_NUM = 5;
+const int POINT_LIGHT_NUM = 1;
 const int SPOT_LIGHT_NUM = 1;
 Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	sphere = Mesh::LoadFromMeshFile("Sphere.msh");
 	root = new SceneNode();
-
+	cone = Mesh::LoadFromMeshFile("Cone.msh");
 	quad = Mesh::GenerateQuad();
 
 	// Load in shaders and textures
@@ -24,10 +25,10 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	shaders.emplace_back(new Shader("skyboxVertex.glsl", "skyboxFragment.glsl"));
 	shaders.emplace_back(new Shader("reflectVertex.glsl", "reflectFragment.glsl"));
 
-	directionallightShader = new Shader("directionallightVert.glsl","directionallightFrag.glsl");
-	pointlightShader = new Shader("pointlightvert.glsl","pointlightfrag.glsl");
-	spotlightShader = new Shader("spotlightVert.glsl", "spotlightFrag.glsl");
-	combineShader = new Shader("combinevert.glsl","combinefrag.glsl");
+	directionallightShader = new Shader("Deferred/directionallightVert.glsl","Deferred/directionallightFrag.glsl");
+	pointlightShader = new Shader("Deferred/pointlightvert.glsl","Deferred/pointlightfrag.glsl");
+	spotlightShader = new Shader("Deferred/spotlightVert.glsl", "Deferred/spotlightFrag.glsl");
+	combineShader = new Shader("Deferred/combinevert.glsl","Deferred/combinefrag.glsl");
 
 	Shader* basicShader = new Shader("TexturedVertex.glsl","TexturedFragment.glsl");
 
@@ -36,6 +37,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	shaders.emplace_back(combineShader);
 	shaders.emplace_back(directionallightShader);
 	shaders.emplace_back(pointlightShader);
+	shaders.emplace_back(spotlightShader);
 	shaders.emplace_back(basicShader);
 
 	textures.emplace_back(SOIL_load_OGL_texture(
@@ -139,11 +141,10 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	root->AddChild(water);
 	materials.emplace_back(waterMat);
 
-	camera = new Camera(-45.0f, 0.0f,
-		heightmapSize * Vector3(0.5f, 5.0f, 0.5f));
+	camera = new Camera(-45.0f, 0.0f,heightmapSize * Vector3(0.5f, 5.0f, 0.5f));
 
 
-	directionalLight = new Light(Vector3(-1, 0, -1), Vector4(1.0f, 1.0f, 1.0f, 1.0f), 0);
+	directionalLight = new Light(Vector3(0, -1, 1), Vector4(1.0f, 1.0f, 1.0f, 1.0f), 0);
 	pointLights = new Light[POINT_LIGHT_NUM];
 
 	for (int i = 0; i < POINT_LIGHT_NUM; ++i) {
@@ -159,6 +160,23 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 		l.SetColour(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 		l.SetRadius(250.0f + (rand() % 250));
 		l.SetRadius(1000.0f);
+	}
+
+	spotLights = new SpotLight[SPOT_LIGHT_NUM];
+
+	for (int i = 0; i < SPOT_LIGHT_NUM; ++i) {
+		SpotLight& l = spotLights[i];
+		l.SetPosition(Vector3(rand() % (int)heightmapSize.x,
+			350.0f,
+			rand() % (int)heightmapSize.z));
+
+		/*l.SetColour(Vector4(0.5f + (float)(rand() / (float)RAND_MAX),
+			0.5f + (float)(rand() / (float)RAND_MAX),
+			0.5f + (float)(rand() / (float)RAND_MAX),
+			1));*/
+		l.SetColour(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+		l.SetRadius(45.0f);
+		l.SetTargetPosition(Vector3(-1, 0, 0));
 		l.CreateShadowFBO();
 	}
 
@@ -220,7 +238,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	glGenFramebuffers(1, &pointLightFBO);
 
 	GLenum buffers[2] = {
-		GL_COLOR_ATTACHMENT0 ,
+		GL_COLOR_ATTACHMENT0,
 		GL_COLOR_ATTACHMENT1
 	};
 
@@ -253,6 +271,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 		GL_TEXTURE_2D, lightSpecularTex, 0);
 	glDrawBuffers(2, buffers);
 
+
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) !=
 		GL_FRAMEBUFFER_COMPLETE) {
 		return;
@@ -284,7 +303,7 @@ Renderer::~Renderer(void) {
 
 	delete directionalLight;
 	delete[] pointLights;
-	//delete[] spotLights;
+	delete[] spotLights;
 
 	glDeleteTextures(1, &refractionBufferTex);
 	glDeleteTextures(1, &reflectionBufferTex);
@@ -520,19 +539,18 @@ void Renderer::DrawDirectionalLight() {
 
 	glClearColor(0.2f, 0.2f, 0.2f, 1);
 
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 	projMatrix = Matrix4::Perspective(1.0f, 15000.0f,
 		(float)width / (float)height, 45.0f);
 	viewMatrix = camera->BuildViewMatrix();
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 }
 
 void Renderer::DrawPointLights() {
 	glBindFramebuffer(GL_FRAMEBUFFER, pointLightFBO);
 	BindShader(pointlightShader);
 
-	glClearColor(0, 0, 0, 1);
-	glClear(GL_COLOR_BUFFER_BIT);
 	glBlendFunc(GL_ONE, GL_ONE);
 	glCullFace(GL_FRONT);
 	glDepthFunc(GL_ALWAYS);
@@ -563,9 +581,9 @@ void Renderer::DrawPointLights() {
 	for (int i = 0; i < POINT_LIGHT_NUM; ++i) {
 		Light& l = pointLights[i];
 		SetShaderLight(l);
-		glUniform1i(glGetUniformLocation(pointlightShader->GetProgram(), "shadowTex"), 22);glActiveTexture(GL_TEXTURE22);
-		glBindTexture(GL_TEXTURE_2D, l.GetShadowTex());
-		glUniformMatrix4fv(glGetUniformLocation(pointlightShader->GetProgram(), "shadowMatrix"), 1, false, l.GetShadowMatrix().values);
+		//glUniform1i(glGetUniformLocation(pointlightShader->GetProgram(), "shadowTex"), 22);glActiveTexture(GL_TEXTURE22);
+		//glBindTexture(GL_TEXTURE_2D, l.GetShadowTex());
+		//glUniformMatrix4fv(glGetUniformLocation(pointlightShader->GetProgram(), "shadowMatrix"), 1, false, l.GetShadowMatrix().values);
 		sphere->Draw();
 
 	}
@@ -575,19 +593,73 @@ void Renderer::DrawPointLights() {
 
 	glDepthMask(GL_TRUE);
 
-	glClearColor(0.2f, 0.2f, 0.2f, 1);
-
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 }
 
 void Renderer::DrawSpotLights() {
+	glBindFramebuffer(GL_FRAMEBUFFER, pointLightFBO);
+	glClearColor(0, 0, 0, 1);
+	glClear(GL_COLOR_BUFFER_BIT);
+	BindShader(spotlightShader);
+
+	glBlendFunc(GL_ONE, GL_ONE);
+	glCullFace(GL_FRONT);
+	glDepthFunc(GL_ALWAYS);
+	glDepthMask(GL_FALSE);
+
+	glUniform1i(glGetUniformLocation(
+		spotlightShader->GetProgram(), "depthTex"), 20);
+	glActiveTexture(GL_TEXTURE20);
+	glBindTexture(GL_TEXTURE_2D, bufferDepthTex);
+
+	glUniform1i(glGetUniformLocation(
+		spotlightShader->GetProgram(), "normTex"), 21);
+	glActiveTexture(GL_TEXTURE21);
+	glBindTexture(GL_TEXTURE_2D, bufferNormalTex);
+
+	glUniform3fv(glGetUniformLocation(spotlightShader->GetProgram(),
+		"cameraPos"), 1, (float*)& camera->GetPosition());
+
+	glUniform2f(glGetUniformLocation(spotlightShader->GetProgram(),
+		"pixelSize"), 1.0f / width, 1.0f / height);
+
+	Matrix4 invViewProj = (projMatrix * viewMatrix).Inverse();
+	glUniformMatrix4fv(glGetUniformLocation(
+		spotlightShader->GetProgram(), "inverseProjView"),
+		1, false, invViewProj.values);
+
+
+	for (int i = 0; i < SPOT_LIGHT_NUM; ++i) {
+
+		SpotLight& l = spotLights[i];
+		//modelMatrix = Matrix4::BuildViewMatrix(l.GetPosition(), l.GetPosition() - (l.GetTargetPosition()));
+		UpdateShaderMatrices();
+		SetShaderLight(l);
+		glUniform1i(glGetUniformLocation(spotlightShader->GetProgram(), "shadowTex"), 22);
+		glActiveTexture(GL_TEXTURE22);
+		glBindTexture(GL_TEXTURE_2D, l.GetShadowTex());
+		glUniform3fv(glGetUniformLocation(spotlightShader->GetProgram(),
+			"lightTargetPos"), 1, (float*)& l.GetTargetPosition());
+		glUniformMatrix4fv(glGetUniformLocation(spotlightShader->GetProgram(), "shadowMatrix"), 1, false, l.GetShadowMatrix().values);
+		sphere->Draw();
+
+	}
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glCullFace(GL_BACK);
+	glDepthFunc(GL_LEQUAL);
+	glClearColor(0.2f, 0.2f, 0.2f, 1);
+
+	glDepthMask(GL_TRUE);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 }
 
 void Renderer::DeferredLighting() {
 	//DrawDirectionalLight();
-	DrawPointLights();
-	//DrawSpotLights();
+	//DrawPointLights();
+	DrawSpotLights();
 }
 
 void Renderer::CombineBuffers() {
@@ -607,13 +679,13 @@ void Renderer::CombineBuffers() {
 	glBindTexture(GL_TEXTURE_2D, bufferColourTex);
 
 	glUniform1i(glGetUniformLocation(
-		combineShader->GetProgram(), "diffuseLight"),24);
-	glActiveTexture(GL_TEXTURE24);
+		combineShader->GetProgram(), "diffuseLight"), 26);
+	glActiveTexture(GL_TEXTURE26);
 	glBindTexture(GL_TEXTURE_2D, lightDiffuseTex);
 
 	glUniform1i(glGetUniformLocation(
-		combineShader->GetProgram(), "specularLight"), 25);
-	glActiveTexture(GL_TEXTURE25);
+		combineShader->GetProgram(), "specularLight"), 27);
+	glActiveTexture(GL_TEXTURE27);
 	glBindTexture(GL_TEXTURE_2D, lightSpecularTex);
 
 	quad->Draw();
@@ -725,8 +797,8 @@ void Renderer::GenerateRefractionBuffer() {
 
 void Renderer::DrawShadowScene() {
 	//DrawDirectionalLightShadow();
-	DrawPointLightsShadow();
-	//DrawSpotLightsShadow();
+	//DrawPointLightsShadow();
+	DrawSpotLightsShadow();
 }
 
 void Renderer::DrawDirectionalLightShadow() {
@@ -758,7 +830,7 @@ void Renderer::DrawDirectionalLightShadow() {
 }
 
 void Renderer::DrawPointLightsShadow() {
-	for (int i = 0; i < POINT_LIGHT_NUM; ++i) {
+	/*for (int i = 0; i < POINT_LIGHT_NUM; ++i) {
 		Light& l = pointLights[i];
 		glBindFramebuffer(GL_FRAMEBUFFER, l.GetShadowFBO());
 
@@ -785,12 +857,12 @@ void Renderer::DrawPointLightsShadow() {
 		projMatrix = Matrix4::Perspective(1.0f, 15000.0f,
 			(float)width / (float)height, 45.0f);
 		viewMatrix = camera->BuildViewMatrix();
-	}
+	}*/
 }
 
 void Renderer::DrawSpotLightsShadow() {
 	for (int i = 0; i < SPOT_LIGHT_NUM; ++i) {
-		Light& l = spotLights[i];
+		SpotLight& l = spotLights[i];
 		glBindFramebuffer(GL_FRAMEBUFFER, l.GetShadowFBO());
 
 		glClear(GL_DEPTH_BUFFER_BIT);
@@ -798,8 +870,7 @@ void Renderer::DrawSpotLightsShadow() {
 		glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 
 		BindShader(shadowShader);
-		viewMatrix = Matrix4::BuildViewMatrix(
-			l.GetPosition(), Vector3(0, 0, 0));
+		viewMatrix = Matrix4::BuildViewMatrix(l.GetPosition(), l.GetPosition() - (l.GetTargetPosition()));
 		projMatrix = Matrix4::Perspective(1, 5000.0f, 1, 45);
 		shadowMatrix = projMatrix * viewMatrix; //used later
 		l.SetShadowMatrix(shadowMatrix);
