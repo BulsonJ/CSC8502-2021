@@ -32,9 +32,15 @@ protected:
 	Camera* camera;
 	Frustum frameFrustum;
 	float sceneTime;
+
 	Light* directionalLight;
 	Light* pointLights;
 	Light* spotLights;
+
+	Shader* directionallightShader;
+	Shader* pointlightShader; // Shader to calculate lighting
+	Shader* spotlightShader;
+	Shader* combineShader; // shader to stick it all together
 
 	GLuint refractionFBO;
 	GLuint refractionBufferTex;
@@ -45,6 +51,8 @@ protected:
 	Vector4 reflectionClipPlane;
 
 	Mesh* quad;
+	Mesh* sphere; // Light volume
+
 	vector<Material*> materials;
 	vector<Shader*> shaders;
 	vector<GLuint> textures;
@@ -54,20 +62,25 @@ protected:
 	Vector4 clipPlane;
 
 	void FillBuffers(); //G-Buffer Fill Render Pass
+	void DrawDirectionalLight();
 	void DrawPointLights(); // Lighting Render Pass
+	void DrawSpotLights();
+
+	void DrawDirectionalLightShadow();
+	void DrawPointLightsShadow();
+	void DrawSpotLightsShadow();
+
 	void CombineBuffers(); // Combination Render Pass
+	void DeferredLighting();
+
 	void GenerateScreenTexture(GLuint& into, bool depth = false);
 
-	Shader* pointlightShader; // Shader to calculate lighting
-	Shader* combineShader; // shader to stick it all together
 
 	GLuint bufferFBO; //FBO for our G-Buffer pass
 	GLuint bufferColourTex; // Albedo goes here
 	GLuint bufferNormalTex; // Normals go here
 	GLuint bufferDepthTex; // Depth goes here
 
-	Mesh* sphere; // Light volume
-	Mesh* quad2;
 	GLuint pointLightFBO; //FBO for our lighting pass
 	GLuint lightDiffuseTex; // Store diffuse lighting
 	GLuint lightSpecularTex; // Store specular lighting
@@ -77,10 +90,6 @@ protected:
 	void GenerateReflectionBuffer();
 
 	void DrawShadowScene();
-	void DrawMainScene();
-
-	GLuint shadowTex;
-	GLuint shadowFBO;
 
 	Shader* sceneShader;
 	Shader* shadowShader;
