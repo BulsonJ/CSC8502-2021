@@ -16,12 +16,12 @@ uniform float sceneTime;
 uniform vec3 lightPos;
 uniform vec4 lightColour;
 
-#define NR_POINT_LIGHTS 1
+#define NR_POINT_LIGHTS 10
 uniform vec4 pointLights_lightColour[NR_POINT_LIGHTS];
 uniform vec3 pointLights_lightPos[NR_POINT_LIGHTS];
 uniform float pointLights_lightRadius[NR_POINT_LIGHTS];
 
-#define NR_SPOT_LIGHTS 5
+#define NR_SPOT_LIGHTS 10
 uniform vec3 spotLights_lightPos[NR_SPOT_LIGHTS];
 uniform vec3 spotLights_lightDirection[NR_SPOT_LIGHTS];
 uniform vec4 spotLights_lightColour[NR_SPOT_LIGHTS];
@@ -80,9 +80,10 @@ vec3 CalcSpotLight(vec4 texture, vec3 light_pos, vec3 light_direction,vec4 light
     float specFactor = clamp(dot(halfDir , normal ) ,0.0 ,1.0);
     specFactor = pow(specFactor , 60.0 );
 
-    float theta = dot(light_pos - IN.worldPos, normalize(-light_direction));
+    vec3 lightDir = normalize(light_pos - IN.worldPos);
+    float theta = dot(lightDir, normalize(-light_direction));
  
-    if(theta > light_cutoff) {
+    if(theta < light_cutoff) {
         attenuation = 0.0;
     }
 

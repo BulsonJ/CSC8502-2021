@@ -50,7 +50,7 @@ void main(void) {
     closestDepth *= far_plane;
     float currentDepth = length(fragToLight);
     // now test for shadows
-    float bias = 0.5; 
+    float bias = 0.05; 
     float shadow = currentDepth - bias > closestDepth ? 0.0 : 1.0;
 
     float lambert = clamp(dot(incident , normal ) ,0.0 ,1.0) ;
@@ -59,5 +59,5 @@ void main(void) {
     specFactor = pow(specFactor , 60.0 );
     vec3 attenuated = lightColour.xyz * atten;
     diffuseOutput = vec4(attenuated * lambert , 1.0) * shadow;
-    specularOutput = vec4(attenuated * specFactor * 0.33, 1.0);
+    specularOutput = vec4(attenuated * specFactor * 0.33, 1.0) * shadow;
 }

@@ -13,8 +13,8 @@
 #include "../nclgl/PointLight.h"
 #include  <algorithm>                //For  std::sort ...
 #define SHADOWSIZE 2048
-const int POINT_LIGHT_NUM = 1;
-const int SPOT_LIGHT_NUM = 5;
+const int POINT_LIGHT_NUM = 10;
+const int SPOT_LIGHT_NUM = 10;
 Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	sphere = Mesh::LoadFromMeshFile("Sphere.msh");
 	root = new SceneNode();
@@ -160,23 +160,20 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	for (int i = 0; i < POINT_LIGHT_NUM; ++i) {
 		PointLight& l = pointLights[i];
 		l.SetPosition(Vector3(rand() % (int)heightmapSize.x,
-			350.0f,
+			250.0f,
 			rand() % (int)heightmapSize.z));
 
-		/*l.SetColour(Vector4(0.5f + (float)(rand() / (float)RAND_MAX),
-			0.5f + (float)(rand() / (float)RAND_MAX),
-			0.5f + (float)(rand() / (float)RAND_MAX),
-			1));*/
-		l.SetColour(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
-		l.SetRadius(250.0f + (rand() % 250));
-		l.SetRadius(1000.0f);
+		l.SetColour(Vector4(1.0f,1.0f, 1.0f, 1.0f));
+		l.SetRadius(500.0f);
 		l.CreateShadowFBO();
 	}
 
 	pointLights->SetPosition(
-		Vector3(heightmapSize.x/2,
-		500.0f,
-		heightmapSize.z/2));
+		Vector3(heightmapSize.x/2 + 450.0f,
+		200.0f,
+		heightmapSize.z/2 - 50.0f));
+	pointLights->SetColour(Vector4(4.0f, 2.0f, 1.0f, 1.0f));
+	pointLights->SetRadius(100.0f);
 
 	spotLights = new SpotLight[SPOT_LIGHT_NUM];
 
@@ -188,9 +185,15 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 		l.SetColour(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 		l.SetRadius(45.0f);
-		l.SetDirection(Vector3(1, 0, 0));
+		l.SetDirection(Vector3(0,-1, 0));
 		l.CreateShadowFBO();
 	}
+
+	spotLights->SetPosition(
+		Vector3(heightmapSize.x / 2 + 700.0f,
+			200.0f,
+			heightmapSize.z / 2 + 200.0f));
+	spotLights->SetDirection(Vector3(-1, 0, 0));
 
 	
 	Material* basic = new Material();
@@ -199,7 +202,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	SceneNode* test = new SceneNode();
 	test->SetMesh(sphere);
 	test->SetMaterial(basic);
-	test->SetTransform(Matrix4::Translation((heightmapSize/2) + Vector3(0,125,0)));
+	test->SetTransform(Matrix4::Translation(Vector3(rand() % (int)heightmapSize.x,250.0f,rand() % (int)heightmapSize.z)));
 	test->SetModelScale(Vector3(10, 10, 10));
 	root->AddChild(test);
 
@@ -960,10 +963,10 @@ void Renderer::DrawSpotLightsShadow() {
 
 		BindShader(shadowShader);
 		if (l.GetDirection().y != 0) {
-			viewMatrix = Matrix4::BuildViewMatrix(l.GetPosition(), l.GetDirection() + l.GetPosition(), Vector3(0,0,1));
+			viewMatrix = Matrix4::BuildViewMatrix(l.GetPosition(), l.GetDirection() + l.GetPosition(), Vector3(-1, 0, 0));
 		}
 		else {
-			viewMatrix = Matrix4::BuildViewMatrix(l.GetPosition(), l.GetDirection() + l.GetPosition());
+			viewMatrix = Matrix4::BuildViewMatrix(l.GetPosition(), l.GetDirection() + l.GetPosition(), Vector3(0, -1, 0));
 		}
 		projMatrix = Matrix4::Perspective(1, 5000.0f, 1, 45.0f);
 		shadowMatrix = projMatrix * viewMatrix; //used later
