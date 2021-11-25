@@ -26,7 +26,7 @@ void main(void) {
     vec3 worldPos = invClipPos.xyz / invClipPos.w;
 
     float dist = length(lightPos - worldPos );
-    float atten = 1.0 - clamp(dist / 100 , 0.0, 1.0);
+    float atten = 1.0 - clamp(dist / 200 , 0.0, 1.0);
 
     float theta = dot(lightPos - worldPos, -lightDirection);
     if(theta > lightCutoff){

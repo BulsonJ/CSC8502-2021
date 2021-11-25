@@ -16,6 +16,7 @@
 const int POINT_LIGHT_NUM = 10;
 const int SPOT_LIGHT_NUM = 10;
 Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
+	capsule = Mesh::LoadFromMeshFile("Capsule.msh");
 	sphere = Mesh::LoadFromMeshFile("Sphere.msh");
 	root = new SceneNode();
 	cone = Mesh::LoadFromMeshFile("Cone.msh");
@@ -170,10 +171,10 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 	pointLights->SetPosition(
 		Vector3(heightmapSize.x/2 + 450.0f,
-		200.0f,
+		240.0f,
 		heightmapSize.z/2 - 50.0f));
 	pointLights->SetColour(Vector4(4.0f, 2.0f, 1.0f, 1.0f));
-	pointLights->SetRadius(100.0f);
+	pointLights->SetRadius(120.0f);
 
 	spotLights = new SpotLight[SPOT_LIGHT_NUM];
 
@@ -191,7 +192,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 	spotLights->SetPosition(
 		Vector3(heightmapSize.x / 2 + 700.0f,
-			200.0f,
+			190.0f,
 			heightmapSize.z / 2 + 200.0f));
 	spotLights->SetDirection(Vector3(-1, 0, 0));
 
@@ -200,9 +201,9 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	basic->SetShader(basicShader);
 	basic->SetTexture(textures[0]);
 	SceneNode* test = new SceneNode();
-	test->SetMesh(sphere);
+	test->SetMesh(capsule);
 	test->SetMaterial(basic);
-	test->SetTransform(Matrix4::Translation(Vector3(rand() % (int)heightmapSize.x,250.0f,rand() % (int)heightmapSize.z)));
+	test->SetTransform(Matrix4::Translation(spotLights->GetPosition() + Vector3(0.0f,0.0f,0)));
 	test->SetModelScale(Vector3(10, 10, 10));
 	root->AddChild(test);
 
@@ -305,6 +306,11 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 Renderer::~Renderer(void) {
 	delete  root;
 	delete  camera;
+
+	delete quad;
+	delete sphere;
+	delete cone;
+	delete capsule;
 	for (auto it = shaders.begin(); it != shaders.end(); it++) {
 		delete* it;
 	}
@@ -705,7 +711,7 @@ void Renderer::DrawSpotLights() {
 		Vector3 rotationAxis = Vector3::Cross(initialDir,finalDir);
 		modelMatrix = 
 			Matrix4::Translation(l.GetPosition()) *
-			Matrix4::Scale(Vector3(100.0f, 100.0f, 100.0f)) *
+			Matrix4::Scale(Vector3(200.0f, 200.0f, 200.0f)) *
 			Matrix4::Rotation(90, -rotationAxis);
 		shadowMatrix = l.GetShadowMatrix();
 		UpdateShaderMatrices();

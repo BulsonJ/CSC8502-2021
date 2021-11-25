@@ -59,6 +59,8 @@ protected:
 	Mesh* sphere; // Light volume
 	Mesh* cone;
 
+	Mesh* capsule;
+
 	vector<Material*> materials;
 	vector<Shader*> shaders;
 	vector<GLuint> textures;
