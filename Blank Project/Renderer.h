@@ -34,6 +34,8 @@ protected:
 	Camera* camera;
 	Frustum frameFrustum;
 	float sceneTime;
+	float dayNightTime;
+	float currentAngle;
 
 	DirectionalLight* directionalLight;
 	Light* pointLights;

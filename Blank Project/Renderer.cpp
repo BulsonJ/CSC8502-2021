@@ -11,6 +11,7 @@
 #include "../nclgl/WaveMaterial.h"
 #include "../nclgl/TerrainMaterial.h"
 #include  <algorithm>                //For  std::sort ...
+#include <cmath>
 const int POST_PASSES = 10;
 #define SHADOWSIZE 2048
 const int POINT_LIGHT_NUM = 5;
@@ -55,6 +56,8 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 		TEXTUREDIR"skybox/top.png", TEXTUREDIR"rusted_south.jpg",
 		TEXTUREDIR"skybox/back.png", TEXTUREDIR"skybox/front.png",
 		SOIL_LOAD_RGB, SOIL_CREATE_NEW_ID, 0));
+
+	//textures.emplace_back(SOIL_load_OGL_single_cubemap(TEXTUREDIR"night.png","NSWEUD", SOIL_LOAD_RGB, SOIL_CREATE_NEW_ID, 0));
 
 	textures.emplace_back(SOIL_load_OGL_texture(
 		TEXTUREDIR"water.TGA", SOIL_LOAD_AUTO,
@@ -145,9 +148,10 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 	camera = new Camera(-45.0f, 0.0f,heightmapSize * Vector3(0.5f, 5.0f, 0.5f));
 
-
-	directionalLight = new DirectionalLight(Vector3(-1, -1, 0), Vector4(1.0f, 1.0f, 1.0f, 1.0f), 0);
+	directionalLight = new DirectionalLight(Vector3(-1, 0, 0), Vector4(1.0f, 1.0f, 1.0f, 1.0f), 0);
 	directionalLight->CreateShadowFBO();
+	currentAngle = 0.0f;
+
 	pointLights = new Light[POINT_LIGHT_NUM];
 
 	for (int i = 0; i < POINT_LIGHT_NUM; ++i) {
@@ -285,7 +289,6 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 
-
 	sceneTime = 0.0f;
 	init = true;
 }
@@ -344,9 +347,15 @@ void Renderer::UpdateScene(float dt) {
 	camera->UpdateCamera(dt);
 	sceneTime += dt;
 
-	Matrix4 rotMatrix = Matrix4::Rotation(dt * 5.0f, Vector3(0, 0, 1));
 
+	float angleChange = dt * 10.0f;
+	currentAngle += angleChange;
+	if (currentAngle > 270) {
+		currentAngle -= 360;
+	}
+	Matrix4 rotMatrix = Matrix4::Rotation(angleChange, Vector3(0, 0, 1));
 	directionalLight->SetPosition(rotMatrix * directionalLight->GetPosition());
+
 
 	viewMatrix = camera->BuildViewMatrix();
 	frameFrustum.FromMatrix(projMatrix * viewMatrix);
@@ -498,8 +507,8 @@ void Renderer::DrawSkybox() {
 
 	BindShader(shaders[1]);
 
-	glUniform1i(glGetUniformLocation(
-		shaders[1]->GetProgram(), "cubeTex"), 2);
+	glUniform1f(glGetUniformLocation(shaders[1]->GetProgram(), "dayAngle"), currentAngle);
+	glUniform1i(glGetUniformLocation(shaders[1]->GetProgram(), "cubeTex"), 2);
 	glActiveTexture(GL_TEXTURE2);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, textures[2]);
 
@@ -950,7 +959,7 @@ vector<Vector4> Renderer::getFrustumCornersWorldSpace()
 						2.0f * y - 1.0f,
 						2.0f * z - 1.0f,
 						1.0f);
-				frustumCorners.push_back(pt / pt.w);
+				//frustumCorners.push_back(Vector4(pt.x,pt.y,pt.z, pt.w) / pt.w);
 			}
 		}
 	}
