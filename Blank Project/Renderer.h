@@ -10,6 +10,7 @@ class  Shader;
 class Material;
 class SpotLight;
 class DirectionalLight;
+class PointLight;
 class  Renderer : public  OGLRenderer {
 public:
 	Renderer(Window& parent);
@@ -38,7 +39,7 @@ protected:
 	float currentAngle;
 
 	DirectionalLight* directionalLight;
-	Light* pointLights;
+	PointLight* pointLights;
 	SpotLight* spotLights;
 
 	Shader* directionallightShader;
@@ -99,6 +100,7 @@ protected:
 
 	Shader* sceneShader;
 	Shader* shadowShader;
+	Shader* shadowCubeShader;
 
 	vector<Vector4> getFrustumCornersWorldSpace();
 

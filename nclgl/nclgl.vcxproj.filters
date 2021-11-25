@@ -48,8 +48,15 @@
     <ClCompile Include="TerrainMaterial.cpp">
       <Filter>Materials</Filter>
     </ClCompile>
-    <ClCompile Include="SpotLight.cpp" />
-    <ClCompile Include="DirectionalLight.cpp" />
+    <ClCompile Include="SpotLight.cpp">
+      <Filter>Lights</Filter>
+    </ClCompile>
+    <ClCompile Include="DirectionalLight.cpp">
+      <Filter>Lights</Filter>
+    </ClCompile>
+    <ClCompile Include="PointLight.cpp">
+      <Filter>Lights</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common.h" />
@@ -109,8 +116,15 @@
     <ClInclude Include="TerrainMaterial.h">
       <Filter>Materials</Filter>
     </ClInclude>
-    <ClInclude Include="SpotLight.h" />
-    <ClInclude Include="DirectionalLight.h" />
+    <ClInclude Include="SpotLight.h">
+      <Filter>Lights</Filter>
+    </ClInclude>
+    <ClInclude Include="DirectionalLight.h">
+      <Filter>Lights</Filter>
+    </ClInclude>
+    <ClInclude Include="PointLight.h">
+      <Filter>Lights</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="GLAD">
@@ -124,6 +138,9 @@
     </Filter>
     <Filter Include="Materials">
       <UniqueIdentifier>{8d236960-9c7c-4f13-bbb0-7222b46e34ed}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Lights">
+      <UniqueIdentifier>{d9a5a28c-6cad-4e67-80d2-14212328b88a}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

@@ -16,7 +16,7 @@ uniform float sceneTime;
 uniform vec3 lightPos;
 uniform vec4 lightColour;
 
-#define NR_POINT_LIGHTS 5
+#define NR_POINT_LIGHTS 1
 uniform vec4 pointLights_lightColour[NR_POINT_LIGHTS];
 uniform vec3 pointLights_lightPos[NR_POINT_LIGHTS];
 uniform float pointLights_lightRadius[NR_POINT_LIGHTS];
