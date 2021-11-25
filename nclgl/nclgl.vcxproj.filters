@@ -49,6 +49,7 @@
       <Filter>Materials</Filter>
     </ClCompile>
     <ClCompile Include="SpotLight.cpp" />
+    <ClCompile Include="DirectionalLight.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common.h" />
@@ -109,6 +110,7 @@
       <Filter>Materials</Filter>
     </ClInclude>
     <ClInclude Include="SpotLight.h" />
+    <ClInclude Include="DirectionalLight.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="GLAD">

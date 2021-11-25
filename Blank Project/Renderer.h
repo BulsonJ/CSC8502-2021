@@ -9,6 +9,7 @@ class  Mesh;
 class  Shader;
 class Material;
 class SpotLight;
+class DirectionalLight;
 class  Renderer : public  OGLRenderer {
 public:
 	Renderer(Window& parent);
@@ -34,7 +35,7 @@ protected:
 	Frustum frameFrustum;
 	float sceneTime;
 
-	Light* directionalLight;
+	DirectionalLight* directionalLight;
 	Light* pointLights;
 	SpotLight* spotLights;
 

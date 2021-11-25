@@ -28,7 +28,7 @@ void main(void) {
     vec3 viewDir = normalize(cameraPos - worldPos );
     vec3 halfDir = normalize(incident + viewDir );
 
-    /*float shadow = 1.0; //New!
+    float shadow = 1.0; //New!
     vec4 pushVal = vec4(normal , 0) * dot(viewDir , normal );
     vec4 shadowProj = shadowMatrix * (vec4(worldPos,1.0)+pushVal);
     vec3 shadowNDC = shadowProj.xyz/shadowProj.w;
@@ -40,13 +40,13 @@ void main(void) {
         if(shadowZ < biasCoord.z) {
            shadow = 0.0f;
         }
-    }*/
+    }
 
     float lambert = clamp(dot(incident , normal ) ,0.0 ,1.0) ;
     float rFactor = clamp(dot(halfDir , normal ) ,0.0 ,1.0);
     float specFactor = clamp(dot(halfDir , normal ) ,0.0 ,1.0);
     specFactor = pow(specFactor , 60.0 );
     vec3 attenuated = lightColour.xyz;
-    diffuseOutput = vec4(attenuated * lambert , 1.0);
+    diffuseOutput = vec4(attenuated * lambert , 1.0) * shadow;
     specularOutput = vec4(attenuated * specFactor * 0.33, 1.0);
 }

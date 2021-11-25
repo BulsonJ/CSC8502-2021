@@ -1,10 +1,12 @@
 #include "Renderer.h"
+#include "../nclgl/Matrix4.h"
 #include "../nclgl/SceneNode.h"
 #include "../nclgl/CubeRobot.h"
 #include "../nclgl/Camera.h"
 #include "../nclgl/HeightMap.h"
 #include "../nclgl/Light.h"
 #include "../nclgl/SpotLight.h"
+#include "../nclgl/DirectionalLight.h"
 #include "../nclgl/Material.h"
 #include "../nclgl/WaveMaterial.h"
 #include "../nclgl/TerrainMaterial.h"
@@ -114,7 +116,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	heightMat->SetRockTex(textures[0]);
 	heightMat->SetRockNormal(textures[1]);
 
-	HeightMap* heightMapMesh = new HeightMap(TEXTUREDIR"noise.png");
+	HeightMap* heightMapMesh = new HeightMap(TEXTUREDIR"noise2.png");
 	heightMap->SetMesh(heightMapMesh);
 	heightMap->SetModelScale(Vector3(1, 1, 1));
 	heightMap->SetMaterial(heightMat);
@@ -144,7 +146,8 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	camera = new Camera(-45.0f, 0.0f,heightmapSize * Vector3(0.5f, 5.0f, 0.5f));
 
 
-	directionalLight = new Light(Vector3(0, -1, 1), Vector4(1.0f, 1.0f, 1.0f, 1.0f), 0);
+	directionalLight = new DirectionalLight(Vector3(-1, -1, 0), Vector4(1.0f, 1.0f, 1.0f, 1.0f), 0);
+	directionalLight->CreateShadowFBO();
 	pointLights = new Light[POINT_LIGHT_NUM];
 
 	for (int i = 0; i < POINT_LIGHT_NUM; ++i) {
@@ -152,6 +155,9 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 		l.SetPosition(Vector3(rand() % (int)heightmapSize.x,
 			350.0f,
 			rand() % (int)heightmapSize.z));
+		l.SetPosition(Vector3(0,
+			350.0f,
+			0));
 
 		/*l.SetColour(Vector4(0.5f + (float)(rand() / (float)RAND_MAX),
 			0.5f + (float)(rand() / (float)RAND_MAX),
@@ -167,29 +173,25 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	for (int i = 0; i < SPOT_LIGHT_NUM; ++i) {
 		SpotLight& l = spotLights[i];
 		l.SetPosition(Vector3(rand() % (int)heightmapSize.x,
-			350.0f,
+			225.0f,
 			rand() % (int)heightmapSize.z));
 
-		/*l.SetColour(Vector4(0.5f + (float)(rand() / (float)RAND_MAX),
-			0.5f + (float)(rand() / (float)RAND_MAX),
-			0.5f + (float)(rand() / (float)RAND_MAX),
-			1));*/
 		l.SetColour(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 		l.SetRadius(45.0f);
-		l.SetDirection(Vector3(0, -1, 0));
+		l.SetDirection(Vector3(1, 0, 0));
 		l.CreateShadowFBO();
 	}
 
-	/*
+	
 	Material* basic = new Material();
 	basic->SetShader(basicShader);
 	basic->SetTexture(textures[0]);
 	SceneNode* test = new SceneNode();
 	test->SetMesh(sphere);
 	test->SetMaterial(basic);
-	//test->SetTransform(Matrix4::Translation(light->GetPosition() + Vector3(-100,0,-0)));
+	test->SetTransform(Matrix4::Translation((heightmapSize/2) + Vector3(0,100,0)));
 	test->SetModelScale(Vector3(10, 10, 10));
-	root->AddChild(test);*/
+	root->AddChild(test);
 
 	projMatrix = Matrix4::Perspective(1.0f, 15000.0f,
 		(float)width / (float)height, 45.0f);
@@ -342,6 +344,10 @@ void Renderer::UpdateScene(float dt) {
 	camera->UpdateCamera(dt);
 	sceneTime += dt;
 
+	Matrix4 rotMatrix = Matrix4::Rotation(dt * 5.0f, Vector3(0, 0, 1));
+
+	directionalLight->SetPosition(rotMatrix * directionalLight->GetPosition());
+
 	viewMatrix = camera->BuildViewMatrix();
 	frameFrustum.FromMatrix(projMatrix * viewMatrix);
 
@@ -350,7 +356,6 @@ void Renderer::UpdateScene(float dt) {
 
 void   Renderer::BuildNodeLists(SceneNode* from) {
 	if (frameFrustum.InsideFrustum(*from)) {
-	//if (true) {
 		Vector3  dir = from->GetWorldTransform().GetPositionVector() - camera->GetPosition();
 		from->SetCameraDistance(Vector3::Dot(dir, dir));
 		if (from->GetColour().w < 1.0f) {
@@ -425,9 +430,9 @@ void Renderer::SetShaderLights(Shader* shader) {
 		if (pointLights + i == NULL) continue;
 
 		Light& l = pointLights[i];
-		lightColour[i] += l.GetColour();
-		lightPos[i] += l.GetPosition();
-		lightRadius[i] += l.GetRadius();
+		lightColour[i] = l.GetColour();
+		lightPos[i] = l.GetPosition();
+		lightRadius[i] = l.GetRadius();
 	}
 
 	GLuint loc = glGetUniformLocation(shader->GetProgram(), "pointLights_lightColour");
@@ -440,14 +445,22 @@ void Renderer::SetShaderLights(Shader* shader) {
 	Vector4 spotlightColour[SPOT_LIGHT_NUM];
 	Vector3 spotlightPos[SPOT_LIGHT_NUM];
 	Vector3 spotlightDirection[SPOT_LIGHT_NUM];
+	float spotlightCutoff[SPOT_LIGHT_NUM];
+
+	for (int i = 0; i < POINT_LIGHT_NUM; ++i) {
+		if (pointLights + i == NULL) continue;
+
+		spotlightCutoff[i] = 0;
+	}
 
 	for (int i = 0; i < SPOT_LIGHT_NUM; ++i) {
 		if (spotLights + i == NULL) continue;
 
 		SpotLight& l = spotLights[i];
-		spotlightColour[i] += l.GetColour();
-		spotlightPos[i] += l.GetPosition();
-		spotlightDirection[i] += l.GetDirection();
+		spotlightColour[i] = l.GetColour();
+		spotlightPos[i] = l.GetPosition();
+		spotlightDirection[i] = l.GetDirection();
+		spotlightCutoff[i] = cos(l.GetRadius() * (PI / 180));
 	}
 
 	loc = glGetUniformLocation(shader->GetProgram(), "spotLights_lightColour");
@@ -456,6 +469,9 @@ void Renderer::SetShaderLights(Shader* shader) {
 	glUniform3fv(loc, SPOT_LIGHT_NUM, (float*)& spotlightPos);
 	loc = glGetUniformLocation(shader->GetProgram(), "spotLights_lightDirection");
 	glUniform3fv(loc, SPOT_LIGHT_NUM, (float*)& spotlightDirection);
+	loc = glGetUniformLocation(shader->GetProgram(), "spotLights_lightCutoff");
+	glUniform1fv(loc, POINT_LIGHT_NUM, spotlightCutoff);
+
 }
 
 void Renderer::RenderScene() {
@@ -528,10 +544,10 @@ void Renderer::DrawDirectionalLight() {
 	glActiveTexture(GL_TEXTURE21);
 	glBindTexture(GL_TEXTURE_2D, bufferNormalTex);
 
-	/*glUniform1i(glGetUniformLocation(
+	glUniform1i(glGetUniformLocation(
 		directionallightShader->GetProgram(), "shadowTex"), 22);
 	glActiveTexture(GL_TEXTURE22);
-	glBindTexture(GL_TEXTURE_2D, shadowTex);*/
+	glBindTexture(GL_TEXTURE_2D, directionalLight->GetShadowTex());
 
 	glUniform3fv(glGetUniformLocation(directionallightShader->GetProgram(),
 		"cameraPos"), 1, (float*)& camera->GetPosition());
@@ -547,6 +563,7 @@ void Renderer::DrawDirectionalLight() {
 	modelMatrix.ToIdentity();
 	viewMatrix.ToIdentity();
 	projMatrix.ToIdentity();
+	shadowMatrix = directionalLight->GetShadowMatrix();
 	UpdateShaderMatrices();
 	SetShaderLight(*directionalLight);
 	quad->Draw();
@@ -621,10 +638,6 @@ void Renderer::DrawSpotLights() {
 	glBindFramebuffer(GL_FRAMEBUFFER, pointLightFBO);
 	BindShader(spotlightShader);
 
-	// Delete after test
-	glClearColor(0, 0, 0, 1);
-	glClear(GL_COLOR_BUFFER_BIT);
-
 	glBlendFunc(GL_ONE, GL_ONE);
 	glCullFace(GL_FRONT);
 	glDepthFunc(GL_ALWAYS);
@@ -655,14 +668,23 @@ void Renderer::DrawSpotLights() {
 	for (int i = 0; i < SPOT_LIGHT_NUM; ++i) {
 
 		SpotLight& l = spotLights[i];
-		modelMatrix = Matrix4::Rotation(90, Vector3(1,0,0));
+		Vector3 initialDir = Vector3(0, 0, 1);
+		Vector3 finalDir = l.GetDirection();
+
+		float rotationAngle = acos(Vector3::Dot(initialDir, finalDir));
+		Vector3 rotationAxis = Vector3::Cross(initialDir,finalDir);
+		modelMatrix = 
+			Matrix4::Translation(l.GetPosition()) *
+			Matrix4::Scale(Vector3(100.0f, 100.0f, 100.0f)) *
+			Matrix4::Rotation(90, -rotationAxis);
+		shadowMatrix = l.GetShadowMatrix();
 		UpdateShaderMatrices();
 		SetShaderLight(l);
 		glUniform1i(glGetUniformLocation(spotlightShader->GetProgram(), "shadowTex"), 22);
 		glActiveTexture(GL_TEXTURE22);
 		glBindTexture(GL_TEXTURE_2D, l.GetShadowTex());
 		glUniform3fv(glGetUniformLocation(spotlightShader->GetProgram(),"lightDirection"), 1, (float*)& l.GetDirection());
-		glUniformMatrix4fv(glGetUniformLocation(spotlightShader->GetProgram(), "shadowMatrix"), 1, false, l.GetShadowMatrix().values);
+		glUniform1f(glGetUniformLocation(spotlightShader->GetProgram(),"lightCutoff"), cos(l.GetRadius() * (PI / 180)));
 		cone->Draw();
 
 	}
@@ -678,7 +700,7 @@ void Renderer::DrawSpotLights() {
 }
 
 void Renderer::DeferredLighting() {
-	//DrawDirectionalLight();
+	DrawDirectionalLight();
 	//DrawPointLights();
 	DrawSpotLights();
 }
@@ -817,24 +839,24 @@ void Renderer::GenerateRefractionBuffer() {
 }
 
 void Renderer::DrawShadowScene() {
-	//DrawDirectionalLightShadow();
+	DrawDirectionalLightShadow();
 	//DrawPointLightsShadow();
 	DrawSpotLightsShadow();
 }
 
 void Renderer::DrawDirectionalLightShadow() {
-	//glBindFramebuffer(GL_FRAMEBUFFER, shadowFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, directionalLight->GetShadowFBO());
 
 	glClear(GL_DEPTH_BUFFER_BIT);
 	glViewport(0, 0, SHADOWSIZE, SHADOWSIZE);
 	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 		
 	BindShader(shadowShader);
-	Vector3 pos = Vector3(1, 400.0f, 1);
 	viewMatrix = Matrix4::BuildViewMatrix(
-		pos, Vector3(0, 0, 0));
-	projMatrix = Matrix4::Orthographic(1.0f, 15000.0f, -4000.0f, 4000.0f, -4000.0f, 4000.0f);
+		Vector3((heightmapSize / 2) + (-directionalLight->GetPosition() * 300.0f)), Vector3(heightmapSize.x/2, 0, heightmapSize.z / 2));
+	projMatrix = Matrix4::Orthographic(1.0f,5000.0f, -2500.0f, 2500.0f, -2500.0f, 2500.0f);
 	shadowMatrix = projMatrix * viewMatrix; //used later
+	directionalLight->SetShadowMatrix(shadowMatrix);
 
 	for (const auto& i : nodeList) {
 		modelMatrix = i->GetWorldTransform() * Matrix4::Scale(i->GetModelScale());

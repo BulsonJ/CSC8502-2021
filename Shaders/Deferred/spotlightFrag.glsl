@@ -9,10 +9,10 @@ uniform mat4 shadowMatrix;
 uniform vec2 pixelSize; // reciprocal of resolution
 uniform vec3 cameraPos;
 
-uniform float lightRadius;
 uniform vec3 lightPos;
 uniform vec3 lightDirection;
 uniform vec4 lightColour;
+uniform float lightCutoff;
 uniform mat4 inverseProjView;
 
 out vec4 diffuseOutput;
@@ -28,6 +28,11 @@ void main(void) {
     float dist = length(lightPos - worldPos );
     float atten = 1.0 - clamp(dist / 500 , 0.0, 1.0);
 
+    float theta = dot(lightPos - worldPos, -lightDirection);
+    if(theta > lightCutoff){
+        atten == 0.0;
+    }
+
     if(atten == 0.0) {
         discard;
     }
@@ -40,7 +45,7 @@ void main(void) {
     float shadow = 1.0; //New!
     vec4 pushVal = vec4(normal , 0) * dot(viewDir , normal );
     vec4 shadowProj = shadowMatrix * (vec4(worldPos,1.0)+pushVal);
-     vec3 shadowNDC = shadowProj.xyz/shadowProj.w;
+    vec3 shadowNDC = shadowProj.xyz/shadowProj.w;
     if(abs(shadowNDC.x) < 1.0f &&
         abs(shadowNDC.y) < 1.0f &&
         abs(shadowNDC.z) < 1.0f) {
@@ -51,14 +56,11 @@ void main(void) {
         }
     }
 
-    float theta = dot(lightPos - worldPos, normalize(-lightDirection));
-    if(theta > lightRadius){
-        float lambert = clamp(dot(incident , normal ) ,0.0 ,1.0) ;
-        float rFactor = clamp(dot(halfDir , normal ) ,0.0 ,1.0);
-        float specFactor = clamp(dot(halfDir , normal ) ,0.0 ,1.0);
-        specFactor = pow(specFactor , 60.0 );
-        vec3 attenuated = lightColour.xyz * atten;
-        diffuseOutput = vec4(attenuated * lambert , 1.0) * shadow;
-        specularOutput = vec4(attenuated * specFactor * 0.33, 1.0);
-    }
+    float lambert = clamp(dot(incident , normal ) ,0.0 ,1.0) ;
+    float rFactor = clamp(dot(halfDir , normal ) ,0.0 ,1.0);
+    float specFactor = clamp(dot(halfDir , normal ) ,0.0 ,1.0);
+    specFactor = pow(specFactor , 60.0 );
+    vec3 attenuated = lightColour.xyz * atten;
+    diffuseOutput = vec4(attenuated * lambert , 1.0) * shadow;
+     specularOutput = vec4(attenuated * specFactor * 0.33, 1.0);
 }
