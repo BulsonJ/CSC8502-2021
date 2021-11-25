@@ -631,12 +631,13 @@ void Renderer::DrawPointLights() {
 		pointlightShader->GetProgram(), "inverseProjView"),
 		1, false, invViewProj.values);
 
-	glUniform1f(glGetUniformLocation(pointlightShader->GetProgram(), "far_plane"), 5000.f);
 
 	UpdateShaderMatrices();
 	for (int i = 0; i < POINT_LIGHT_NUM; ++i) {
 		PointLight& l = pointLights[i];
 		SetShaderLight(l);
+
+		glUniform1f(glGetUniformLocation(pointlightShader->GetProgram(), "far_plane"), l.GetRadius() * 2);
 
 		Matrix4 faces[CUBE_FACES];
 		for (int i = 0; i < CUBE_FACES; i++) {
@@ -911,7 +912,7 @@ void Renderer::DrawPointLightsShadow() {
 		BindShader(shadowCubeShader);
 
 		// Set up shadow matrices for light
-		projMatrix = Matrix4::Perspective(1, 5000.0f, 1, 90);
+		projMatrix = Matrix4::Perspective(1, l.GetRadius() * 2, 1, 90);
 		l.SetShadowMatrix(0,projMatrix * Matrix4::BuildViewMatrix(l.GetPosition(),
 			l.GetPosition() + Vector3(1.0, 0, 0), Vector3(0, -1.0, 0)));
 		l.SetShadowMatrix(1, projMatrix * Matrix4::BuildViewMatrix(l.GetPosition(),
@@ -934,7 +935,7 @@ void Renderer::DrawPointLightsShadow() {
 			modelMatrix = i->GetWorldTransform() * Matrix4::Scale(i->GetModelScale());
 			SetShaderLight(l);
 			UpdateShaderMatrices();
-			glUniform1f(glGetUniformLocation(shadowCubeShader->GetProgram(), "far_plane"), 5000.f);
+			glUniform1f(glGetUniformLocation(shadowCubeShader->GetProgram(), "far_plane"), l.GetRadius() * 2);
 			glUniformMatrix4fv(glGetUniformLocation(shadowCubeShader->GetProgram(), "shadowMatrices"), 6, false, (float*)& faces);
 			i->Draw(*this);
 		}
@@ -958,7 +959,12 @@ void Renderer::DrawSpotLightsShadow() {
 		glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 
 		BindShader(shadowShader);
-		viewMatrix = Matrix4::BuildViewMatrix(l.GetPosition(), l.GetDirection() + l.GetPosition());
+		if (l.GetDirection().y != 0) {
+			viewMatrix = Matrix4::BuildViewMatrix(l.GetPosition(), l.GetDirection() + l.GetPosition(), Vector3(0,0,1));
+		}
+		else {
+			viewMatrix = Matrix4::BuildViewMatrix(l.GetPosition(), l.GetDirection() + l.GetPosition());
+		}
 		projMatrix = Matrix4::Perspective(1, 5000.0f, 1, 45.0f);
 		shadowMatrix = projMatrix * viewMatrix; //used later
 		l.SetShadowMatrix(shadowMatrix);
@@ -978,28 +984,4 @@ void Renderer::DrawSpotLightsShadow() {
 	}
 }
 
-vector<Vector4> Renderer::getFrustumCornersWorldSpace()
-{
-	Matrix4 inv = (projMatrix * viewMatrix).Inverse();
-
-	vector<Vector4> frustumCorners;
-	for (unsigned int x = 0; x < 2; ++x)
-	{
-		for (unsigned int y = 0; y < 2; ++y)
-		{
-			for (unsigned int z = 0; z < 2; ++z)
-			{
-				Vector4 pt =
-					inv * Vector4(
-						2.0f * x - 1.0f,
-						2.0f * y - 1.0f,
-						2.0f * z - 1.0f,
-						1.0f);
-				//frustumCorners.push_back(Vector4(pt.x,pt.y,pt.z, pt.w) / pt.w);
-			}
-		}
-	}
-
-	return frustumCorners;
-}
 

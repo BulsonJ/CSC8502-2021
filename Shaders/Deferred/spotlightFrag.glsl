@@ -62,5 +62,5 @@ void main(void) {
     specFactor = pow(specFactor , 60.0 );
     vec3 attenuated = lightColour.xyz * atten;
     diffuseOutput = vec4(attenuated * lambert , 1.0) * shadow;
-     specularOutput = vec4(attenuated * specFactor * 0.33, 1.0);
+     specularOutput = vec4(attenuated * specFactor * 0.33, 1.0) * shadow;
 }
