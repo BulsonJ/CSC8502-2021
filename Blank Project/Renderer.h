@@ -98,4 +98,6 @@ protected:
 	Shader* sceneShader;
 	Shader* shadowShader;
 
+	vector<Vector4> getFrustumCornersWorldSpace();
+
 };

@@ -189,7 +189,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	SceneNode* test = new SceneNode();
 	test->SetMesh(sphere);
 	test->SetMaterial(basic);
-	test->SetTransform(Matrix4::Translation((heightmapSize/2) + Vector3(0,100,0)));
+	test->SetTransform(Matrix4::Translation((heightmapSize/2) + Vector3(0,125,0)));
 	test->SetModelScale(Vector3(10, 10, 10));
 	root->AddChild(test);
 
@@ -685,7 +685,7 @@ void Renderer::DrawSpotLights() {
 		glBindTexture(GL_TEXTURE_2D, l.GetShadowTex());
 		glUniform3fv(glGetUniformLocation(spotlightShader->GetProgram(),"lightDirection"), 1, (float*)& l.GetDirection());
 		glUniform1f(glGetUniformLocation(spotlightShader->GetProgram(),"lightCutoff"), cos(l.GetRadius() * (PI / 180)));
-		cone->Draw();
+		sphere->Draw();
 
 	}
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -931,5 +931,30 @@ void Renderer::DrawSpotLightsShadow() {
 			(float)width / (float)height, 45.0f);
 		viewMatrix = camera->BuildViewMatrix();
 	}
+}
+
+vector<Vector4> Renderer::getFrustumCornersWorldSpace()
+{
+	Matrix4 inv = (projMatrix * viewMatrix).Inverse();
+
+	vector<Vector4> frustumCorners;
+	for (unsigned int x = 0; x < 2; ++x)
+	{
+		for (unsigned int y = 0; y < 2; ++y)
+		{
+			for (unsigned int z = 0; z < 2; ++z)
+			{
+				Vector4 pt =
+					inv * Vector4(
+						2.0f * x - 1.0f,
+						2.0f * y - 1.0f,
+						2.0f * z - 1.0f,
+						1.0f);
+				frustumCorners.push_back(pt / pt.w);
+			}
+		}
+	}
+
+	return frustumCorners;
 }
 
