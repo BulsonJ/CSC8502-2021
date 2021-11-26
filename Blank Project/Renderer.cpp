@@ -1004,7 +1004,7 @@ void Renderer::DrawDirectionalLightShadow() {
 	glBindFramebuffer(GL_FRAMEBUFFER, directionalLight->GetShadowFBO());
 
 	glClear(GL_DEPTH_BUFFER_BIT);
-	glViewport(0, 0, SHADOWSIZE, SHADOWSIZE);
+	glViewport(0, 0, 8192, 8192);
 	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 		
 	BindShader(shadowShader);

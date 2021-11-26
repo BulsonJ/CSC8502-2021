@@ -1,5 +1,5 @@
 #include "DirectionalLight.h"
-#define SHADOWSIZE 2048
+#define SHADOWSIZE 8192
 DirectionalLight::DirectionalLight(const Vector3& position, const Vector4& colour, float radius) : Light(position, colour, radius) {
 
 }
