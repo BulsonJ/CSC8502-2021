@@ -70,8 +70,6 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 		TEXTUREDIR"skybox/back.png", TEXTUREDIR"skybox/front.png",
 		SOIL_LOAD_RGB, SOIL_CREATE_NEW_ID, 0));
 
-	//textures.emplace_back(SOIL_load_OGL_single_cubemap(TEXTUREDIR"night.png","NSWEUD", SOIL_LOAD_RGB, SOIL_CREATE_NEW_ID, 0));
-
 	textures.emplace_back(SOIL_load_OGL_texture(
 		TEXTUREDIR"water.TGA", SOIL_LOAD_AUTO,
 		SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS));
@@ -191,7 +189,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 		240.0f,
 		heightmapSize.z/2 - 50.0f));
 	pointLights->SetColour(Vector4(4.0f, 2.0f, 1.0f, 1.0f));
-	pointLights->SetRadius(120.0f);
+	pointLights->SetRadius(80.0f);
 
 	spotLights = new SpotLight[SPOT_LIGHT_NUM];
 
@@ -224,11 +222,11 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 		tree->SetMesh(palmTree);
 		tree->SetMaterial(basic);
 		Vector3 placement((rand() % (int)200) - 100,
-			-65.0f,
+			-70.0f,
 			(rand() % (int)200) - 100);
 		tree->SetTransform(Matrix4::Translation(pointLights->GetPosition() + placement));
 		tree->SetModelScale(Vector3(20, 20, 20));
-		tree->SetBoundingRadius(10000);
+		tree->SetBoundingRadius(1000);
 		root->AddChild(tree);
 	}
 
@@ -332,29 +330,23 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 
 
-	cameraPoints.emplace_back(camera->GetPosition());
-	Vector3 initialCameraRot = Vector3(0, 0, 0);
+	Vector3 initialCameraRot = Vector3(305, -26, 0);
 	camera->SetPitch(initialCameraRot.x);
 	camera->SetYaw(initialCameraRot.y);
 	camera->SetRoll(initialCameraRot.z);
-	cameraRotations.emplace_back(initialCameraRot);
+	camera->SetPosition(Vector3(1333, 822, 2411));
 
 	// Pointlights
-	cameraPoints.emplace_back(Vector3(2459,206,2130));
-	cameraRotations.emplace_back(Vector3(348, -7, 0));
+	cameraPoints.emplace_back(std::make_pair(Vector3(2459, 206, 2130), Vector3(348, -7, 0)));
 
 	// Spot lights
-	cameraPoints.emplace_back(Vector3(2922,353,2406));
-	cameraRotations.emplace_back(Vector3(51, -30, 0));
-
+	cameraPoints.emplace_back(std::make_pair(Vector3(2922,353,2406), Vector3(51, -30, 0)));
 
 	// Fresnel effect
-	cameraPoints.emplace_back(Vector3(2279, 535, 2168));
-	cameraRotations.emplace_back(Vector3(64, -48, 0));
+	cameraPoints.emplace_back(std::make_pair(Vector3(2279, 535, 2168), Vector3(64, -48, 0)));
 
 	// Water Reflection/Refraction
-	cameraPoints.emplace_back(Vector3(2584, 176, 1148));
-	cameraRotations.emplace_back(Vector3(213, 0.44, 0));
+	cameraPoints.emplace_back(std::make_pair(Vector3(2584, 176, 1148), Vector3(213, 0.44, 0)));
 
 
 	currentPoint = 0;
@@ -363,6 +355,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	sceneTime = 0.0f;
 	init = true;
 	lockedCamera = true;
+	alternate = true;
 }
 
 Renderer::~Renderer(void) {
@@ -437,7 +430,7 @@ void Renderer::UpdateScene(float dt) {
 	sceneTime += dt;
 
 
-	float angleChange = dt * 5.0f;
+	float angleChange = dt * 7.0f;
 	currentAngle += angleChange;
 	if (currentAngle > 270) {
 		currentAngle -= 360;
@@ -445,26 +438,46 @@ void Renderer::UpdateScene(float dt) {
 	Matrix4 rotMatrix = Matrix4::Rotation(angleChange, Vector3(0, 0, 1));
 	directionalLight->SetPosition(rotMatrix * directionalLight->GetPosition());
 
-	//pointLights->SetPosition(Vector3((heightmapSize.x / 2 + 450.0f) + ((sin(dt) * (PI / 180))), pointLights->GetPosition().y, pointLights->GetPosition().z));
+	float newRadius = 0;
+	if (alternate) {
+		newRadius = LerpFloat(pointLights->GetRadius(), 60, dt * 0.5f);
+	}
+	else {
+		newRadius = LerpFloat(pointLights->GetRadius(), 120, dt * 0.5f);
+	}
+
+	if (newRadius > 110) {
+		alternate = !alternate;
+	} else if ( newRadius < 70){
+		alternate = !alternate;
+	}
+	else {
+		pointLights->SetRadius(newRadius);
+	}
 
 	if (lockedCamera) {
 		waitTime += dt;
-		if (currentPoint < cameraPoints.size() && waitTime > 12) {
 
-			Vector3 newPos = LerpVector(camera->GetPosition(), cameraPoints[currentPoint], dt * 1.25f);
-			viewMatrix = Matrix4::BuildViewMatrix(camera->GetPosition(), cameraPoints[currentPoint]);
-			camera->SetPosition(newPos);
+		if (currentPoint >= cameraPoints.size()) {
+			lockedCamera = false;
+		}
+		else {
+			if (waitTime > 12) {
 
-			float yaw = LerpFloat(camera->GetYaw(), cameraRotations[currentPoint].x, dt * 5.0f);
-			float pitch = LerpFloat(camera->GetPitch(), cameraRotations[currentPoint].y, dt * 5.0f);
-			float roll = LerpFloat(camera->GetRoll(), cameraRotations[currentPoint].z, dt * 5.0f);
-			camera->SetYaw(yaw);
-			camera->SetPitch(pitch);
-			camera->SetRoll(roll);
+				Vector3 newPos = LerpVector(camera->GetPosition(), cameraPoints[currentPoint].first, dt * 1.25f);
+				camera->SetPosition(newPos);
 
-			if ((camera->GetPosition() - cameraPoints[currentPoint]).Length() < 5) {
-				currentPoint += 1;
-				waitTime = 0;
+				float yaw = LerpFloat(camera->GetYaw(), cameraPoints[currentPoint].second.x, dt * 5.0f);
+				float pitch = LerpFloat(camera->GetPitch(), cameraPoints[currentPoint].second.y, dt * 5.0f);
+				float roll = LerpFloat(camera->GetRoll(), cameraPoints[currentPoint].second.z, dt * 5.0f);
+				camera->SetYaw(yaw);
+				camera->SetPitch(pitch);
+				camera->SetRoll(roll);
+
+				if ((camera->GetPosition() - cameraPoints[currentPoint].first).Length() < 5) {
+					currentPoint += 1;
+					waitTime = 0;
+				}
 			}
 		}
 	}
@@ -752,7 +765,7 @@ void Renderer::DrawPointLights() {
 		PointLight& l = pointLights[i];
 		SetShaderLight(l);
 
-		glUniform1f(glGetUniformLocation(pointlightShader->GetProgram(), "far_plane"), l.GetRadius() * 2);
+		glUniform1f(glGetUniformLocation(pointlightShader->GetProgram(), "far_plane"), l.GetRadius());
 
 		Matrix4 faces[CUBE_FACES];
 		for (int i = 0; i < CUBE_FACES; i++) {
@@ -1050,7 +1063,7 @@ void Renderer::DrawPointLightsShadow() {
 			modelMatrix = i->GetWorldTransform() * Matrix4::Scale(i->GetModelScale());
 			SetShaderLight(l);
 			UpdateShaderMatrices();
-			glUniform1f(glGetUniformLocation(shadowCubeShader->GetProgram(), "far_plane"), l.GetRadius() * 2);
+			glUniform1f(glGetUniformLocation(shadowCubeShader->GetProgram(), "far_plane"), l.GetRadius() );
 			glUniformMatrix4fv(glGetUniformLocation(shadowCubeShader->GetProgram(), "shadowMatrices"), 6, false, (float*)& faces);
 			i->Draw(*this);
 		}

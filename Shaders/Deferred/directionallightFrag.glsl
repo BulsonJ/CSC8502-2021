@@ -42,11 +42,12 @@ void main(void) {
         }
     }
 
+    // Light calculations
     float lambert = clamp(dot(incident , normal ) ,0.0 ,1.0) ;
     float rFactor = clamp(dot(halfDir , normal ) ,0.0 ,1.0);
     float specFactor = clamp(dot(halfDir , normal ) ,0.0 ,1.0);
     specFactor = pow(specFactor , 60.0 );
-    vec3 attenuated = lightColour.xyz;
-    diffuseOutput = vec4(attenuated * lambert , 1.0) * shadow;
-    specularOutput = vec4(attenuated * specFactor * 0.33, 1.0) * shadow;
+    vec3 attenuated = lightColour.xyz; // ambient
+    diffuseOutput = vec4(attenuated * lambert , 1.0) * shadow; // diffuse
+    specularOutput = vec4(attenuated * specFactor * 0.33, 1.0) * shadow; // specular
 }

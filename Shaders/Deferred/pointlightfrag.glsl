@@ -44,7 +44,7 @@ void main(void) {
     vec3 viewDir = normalize(cameraPos - worldPos );
     vec3 halfDir = normalize(incident + viewDir );
     
-
+    //Shadow calculations
     vec3 fragToLight = worldPos - lightPos;
     float closestDepth = texture(shadowTex, fragToLight).r;
     closestDepth *= far_plane;
@@ -53,6 +53,7 @@ void main(void) {
     float bias = 0.05; 
     float shadow = currentDepth - bias > closestDepth ? 0.0 : 1.0;
 
+    // Light calculations
     float lambert = clamp(dot(incident , normal ) ,0.0 ,1.0) ;
     float rFactor = clamp(dot(halfDir , normal ) ,0.0 ,1.0);
     float specFactor = clamp(dot(halfDir , normal ) ,0.0 ,1.0);

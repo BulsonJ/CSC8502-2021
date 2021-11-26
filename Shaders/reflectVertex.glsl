@@ -34,15 +34,17 @@ out Vertex {
 
 void main(void) {
 
-    
+    // Calculate water offset
     vec3 offset = vec3(0,0,0);
     float k = 2 * 3.142 / waveLength;
     float f = k * (position.x - speed * sceneTime);
     offset.y = amplitude * sin(f) ;
 
+    // Calculate normal and tanget
     vec3 tangent_wave = normalize(vec3(1, k * amplitude * cos(f), 0));
     vec3 normal_wave = vec3(-tangent.y, tangent.x, 0);
 
+    // Convert normal and tangent to world space
     vec3 wNormal = normalize(normalMatrix * normalize(normal_wave));
     vec3 wTangent = normalize(normalMatrix * normalize(tangent_wave));
 
@@ -51,15 +53,16 @@ void main(void) {
     OUT.binormal = cross(wTangent , wNormal) * tangent.w;
     
     vec4 worldPos = (modelMatrix * vec4((position + offset),1));
-    OUT.clipSpace = projMatrix * viewMatrix * worldPos;
-
-    OUT.toCameraVector = cameraPos - worldPos.xyz;
 
     OUT.worldPos = worldPos.xyz;
+    OUT.clipSpace = projMatrix * viewMatrix * worldPos;
+    OUT.toCameraVector = cameraPos - worldPos.xyz;
+    OUT.texCoord = texCoord;
 
+    // Set clipping plane
     gl_ClipDistance[0] = dot(worldPos, plane);
 
-    OUT.texCoord = texCoord;
+
 
     gl_Position = projMatrix * viewMatrix * worldPos;
 }

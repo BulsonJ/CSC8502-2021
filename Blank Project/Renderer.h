@@ -107,8 +107,9 @@ protected:
 	GLuint lightDiffuseTex; // Store diffuse lighting
 	GLuint lightSpecularTex; // Store specular lighting
 
-	vector<Vector3> cameraPoints;
-	vector<Vector3> cameraRotations;
+	vector<std::pair<Vector3, Vector3>> cameraPoints;
 	int currentPoint;
 	float waitTime;
+
+	bool alternate;
 };

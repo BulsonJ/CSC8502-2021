@@ -43,15 +43,6 @@ in Vertex {
 
 out vec4 fragColour;
 
-float linearDepth(float depthSample)
-{
-    depthSample = 2.0 * depthSample - 1.0;
-    float zNear = 1.0f;
-    float zFar = 15000.0f;
-    float zLinear = 2.0 * zNear * zFar / (zFar + zNear - depthSample * (zFar - zNear));
-    return zLinear;
-}
-
 vec3 CalcDirLight(vec4 texture, vec3 light_pos, vec4 light_colour, vec3 normal){
     vec3 incident = normalize(-light_pos);
     vec3 viewDir = normalize(cameraPos - IN.worldPos );
@@ -126,7 +117,7 @@ void main(void) {
     vec2 ndc = (IN.clipSpace.xy/IN.clipSpace.w)/2.0 + 0.5;
     vec2 refractTexCoords = vec2(ndc.x,ndc.y);
     vec2 reflectTexCoords = vec2(ndc.x,-ndc.y);
-    // Calculate depth
+    // Calculate depth from water distance 
     float far = 15000.0;
     float near = 1.0;
     
@@ -169,11 +160,11 @@ void main(void) {
     vec3 bumpNormal = texture(bumpTex , IN.texCoord ).rgb;
     bumpNormal = normalize(TBN * normalize(bumpNormal * 2.0 - 1.0));
 
+    // Calculate lighting
     vec3 output;
     output = CalcDirLight(diffuse, lightPos,lightColour, bumpNormal); 
     for(int i = 0; i < NR_POINT_LIGHTS; i++){
         output += CalcPointLight(diffuse, pointLights_lightPos[i],pointLights_lightRadius[i],pointLights_lightColour[i], bumpNormal); 
-        // (specular + diffuse * shadow)
     }
     for(int i = 0; i < NR_SPOT_LIGHTS; i++){
         output += CalcSpotLight(diffuse, spotLights_lightPos[i],spotLights_lightDirection[i], spotLights_lightColour[i],500.0f, spotLights_lightCutoff[i],bumpNormal);
