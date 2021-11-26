@@ -11,6 +11,7 @@
 #include "../nclgl/WaveMaterial.h"
 #include "../nclgl/TerrainMaterial.h"
 #include "../nclgl/PointLight.h"
+#include "../nclgl/MeshMaterial.h"
 #include  <algorithm>                //For  std::sort ...
 #define SHADOWSIZE 2048
 const int POINT_LIGHT_NUM = 10;
@@ -18,34 +19,42 @@ const int SPOT_LIGHT_NUM = 10;
 Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	capsule = Mesh::LoadFromMeshFile("Capsule.msh");
 	sphere = Mesh::LoadFromMeshFile("Sphere.msh");
+	palmTree = Mesh::LoadFromMeshFile("palm_dual.msh");
+
 	root = new SceneNode();
 	cone = Mesh::LoadFromMeshFile("Cone.msh");
 	quad = Mesh::GenerateQuad();
 
-	// Load in shaders and textures
+	// Load in shaders
+	Shader* terrainShader = new Shader("bumpVertex.glsl", "bumpFragment.glsl");
+	shaders.emplace_back(terrainShader);
 
-	shaders.emplace_back(new Shader("bumpVertex.glsl", "bumpFragment.glsl"));
-	shaders.emplace_back(new Shader("skyboxVertex.glsl", "skyboxFragment.glsl"));
-	shaders.emplace_back(new Shader("reflectVertex.glsl", "reflectFragment.glsl"));
+	Shader* waterShader = new Shader("reflectVertex.glsl", "reflectFragment.glsl");
+	shaders.emplace_back(waterShader);
 
-	directionallightShader = new Shader("Deferred/directionallightVert.glsl","Deferred/directionallightFrag.glsl");
-	pointlightShader = new Shader("Deferred/pointlightvert.glsl","Deferred/pointlightfrag.glsl");
-	spotlightShader = new Shader("Deferred/spotlightVert.glsl", "Deferred/spotlightFrag.glsl");
-	combineShader = new Shader("Deferred/combinevert.glsl","Deferred/combinefrag.glsl");
+	skyboxShader = new Shader("skyboxVertex.glsl", "skyboxFragment.glsl");
+	shaders.emplace_back(skyboxShader);
 
+	// Load in light shaders
+	combineShader = new Shader("Deferred/combinevert.glsl", "Deferred/combinefrag.glsl");
 	shaders.emplace_back(combineShader);
+	directionallightShader = new Shader("Deferred/directionallightVert.glsl", "Deferred/directionallightFrag.glsl");
 	shaders.emplace_back(directionallightShader);
+	pointlightShader = new Shader("Deferred/pointlightvert.glsl", "Deferred/pointlightfrag.glsl");
 	shaders.emplace_back(pointlightShader);
+	spotlightShader = new Shader("Deferred/spotlightVert.glsl", "Deferred/spotlightFrag.glsl");
 	shaders.emplace_back(spotlightShader);
+
+	// Load in shadow shader & shadow cube shader
+	shadowShader = new Shader("shadowVert.glsl", "shadowFrag.glsl");
+	shadowCubeShader = new Shader("shadowCubeVert.glsl", "shadowCubeFrag.glsl", "shadowCube.glsl");
+	shaders.emplace_back(shadowShader);
+	shaders.emplace_back(shadowCubeShader);
 
 	Shader* basicShader = new Shader("TexturedVertex.glsl","TexturedFragment.glsl");
 	shaders.emplace_back(basicShader);
 
-	shadowShader = new Shader("shadowVert.glsl", "shadowFrag.glsl");
-	shadowCubeShader = new Shader("shadowCubeVert.glsl","shadowCubeFrag.glsl", "shadowCube.glsl");
-	shaders.emplace_back(shadowShader);
-	shaders.emplace_back(shadowCubeShader);
-
+	// Load in textures
 
 	textures.emplace_back(SOIL_load_OGL_texture(
 		TEXTUREDIR"Barren Reds.JPG", SOIL_LOAD_AUTO,
@@ -91,6 +100,14 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 		TEXTUREDIR"grass/grass01_n.JPG", SOIL_LOAD_AUTO,
 		SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS));
 
+	textures.emplace_back(SOIL_load_OGL_texture(
+		TEXTUREDIR"tree/diffuse.tga", SOIL_LOAD_AUTO,
+		SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS));
+
+	textures.emplace_back(SOIL_load_OGL_texture(
+		TEXTUREDIR"tree/normal.tga", SOIL_LOAD_AUTO,
+		SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS));
+
 	for (auto it = shaders.begin(); it != shaders.end(); it++) {
 		if (!(*it)->LoadSuccess()) return;
 	}
@@ -114,7 +131,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	// Create height map
 	SceneNode* heightMap = new SceneNode();
 	TerrainMaterial* heightMat = new TerrainMaterial();
-	heightMat->SetShader(shaders[0]);
+	heightMat->SetShader(terrainShader);
 
 	heightMat->SetSandTex(textures[8]);
 	heightMat->SetSandNormal(textures[9]);
@@ -136,7 +153,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	SceneNode* water = new SceneNode();
 	WaveMaterial* waterMat = new WaveMaterial();
 	waterMat->SetTexture(textures[3]);
-	waterMat->SetShader(shaders[2]);
+	waterMat->SetShader(waterShader);
 	waterMat->SetCubeMap(textures[2]);
 	waterMat->SetBump(textures[4]);
 	waterMat->SetDuDvTex(textures[5]);
@@ -150,7 +167,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	root->AddChild(water);
 	materials.emplace_back(waterMat);
 
-	camera = new Camera(-45.0f, 0.0f,heightmapSize * Vector3(0.5f, 5.0f, 0.5f));
+	camera = new Camera(-45.0f, 0.0f, heightmapSize * Vector3(0.5f, 5.0f, 0.5f));
 
 	directionalLight = new DirectionalLight(Vector3(-1, 0, 0), Vector4(1.0f, 1.0f, 1.0f, 1.0f), 0);
 	directionalLight->CreateShadowFBO();
@@ -199,11 +216,26 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	
 	Material* basic = new Material();
 	basic->SetShader(basicShader);
-	basic->SetTexture(textures[0]);
+	basic->SetTexture(textures[10]);
+	basic->SetBump(textures[11]);
+
+	for (int i = 0; i < 20; i++) {
+		SceneNode* tree = new SceneNode();
+		tree->SetMesh(palmTree);
+		tree->SetMaterial(basic);
+		Vector3 placement((rand() % (int)200) - 100,
+			-65.0f,
+			(rand() % (int)200) - 100);
+		tree->SetTransform(Matrix4::Translation(pointLights->GetPosition() + placement));
+		tree->SetModelScale(Vector3(20, 20, 20));
+		tree->SetBoundingRadius(10000);
+		root->AddChild(tree);
+	}
+
 	SceneNode* test = new SceneNode();
 	test->SetMesh(capsule);
 	test->SetMaterial(basic);
-	test->SetTransform(Matrix4::Translation(spotLights->GetPosition() + Vector3(0.0f,0.0f,0)));
+	test->SetTransform(Matrix4::Translation(spotLights->GetPosition() + Vector3(0.0f, 0.0f, 0)));
 	test->SetModelScale(Vector3(10, 10, 10));
 	root->AddChild(test);
 
@@ -251,7 +283,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	waterMat->SetRefractionTex(refractionBufferTex);
 
 	glGenFramebuffers(1, &bufferFBO);
-	glGenFramebuffers(1, &pointLightFBO);
+	glGenFramebuffers(1, &deferredLightFBO);
 
 	GLenum buffers[2] = {
 		GL_COLOR_ATTACHMENT0,
@@ -280,7 +312,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 		return;
 	}
 
-	glBindFramebuffer(GL_FRAMEBUFFER, pointLightFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, deferredLightFBO);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
 		GL_TEXTURE_2D, lightDiffuseTex, 0);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1,
@@ -299,8 +331,38 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 
+
+	cameraPoints.emplace_back(camera->GetPosition());
+	Vector3 initialCameraRot = Vector3(0, 0, 0);
+	camera->SetPitch(initialCameraRot.x);
+	camera->SetYaw(initialCameraRot.y);
+	camera->SetRoll(initialCameraRot.z);
+	cameraRotations.emplace_back(initialCameraRot);
+
+	// Pointlights
+	cameraPoints.emplace_back(Vector3(2459,206,2130));
+	cameraRotations.emplace_back(Vector3(348, -7, 0));
+
+	// Spot lights
+	cameraPoints.emplace_back(Vector3(2922,353,2406));
+	cameraRotations.emplace_back(Vector3(51, -30, 0));
+
+
+	// Fresnel effect
+	cameraPoints.emplace_back(Vector3(2279, 535, 2168));
+	cameraRotations.emplace_back(Vector3(64, -48, 0));
+
+	// Water Reflection/Refraction
+	cameraPoints.emplace_back(Vector3(2584, 176, 1148));
+	cameraRotations.emplace_back(Vector3(213, 0.44, 0));
+
+
+	currentPoint = 0;
+	waitTime = 0;
+
 	sceneTime = 0.0f;
 	init = true;
+	lockedCamera = true;
 }
 
 Renderer::~Renderer(void) {
@@ -311,6 +373,7 @@ Renderer::~Renderer(void) {
 	delete sphere;
 	delete cone;
 	delete capsule;
+	delete palmTree;
 	for (auto it = shaders.begin(); it != shaders.end(); it++) {
 		delete* it;
 	}
@@ -337,7 +400,7 @@ Renderer::~Renderer(void) {
 	glDeleteTextures(1, &lightSpecularTex);
 
 	glDeleteFramebuffers(1, &bufferFBO);
-	glDeleteFramebuffers(1, &pointLightFBO);
+	glDeleteFramebuffers(1, &deferredLightFBO);
 }
 
 void Renderer::GenerateScreenTexture(GLuint& into, bool depth) {
@@ -358,12 +421,23 @@ void Renderer::GenerateScreenTexture(GLuint& into, bool depth) {
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
+
+Vector3 LerpVector(Vector3 from, Vector3 to, float value) {
+	return (from + ((to - from) * value));
+}
+
+float LerpFloat(float from, float to, float value) {
+	return (from + ((to - from) * value));
+}
+
 void Renderer::UpdateScene(float dt) {
-	camera->UpdateCamera(dt);
+	if (!lockedCamera) {
+		camera->UpdateCamera(dt);
+	}
 	sceneTime += dt;
 
 
-	float angleChange = dt * 10.0f;
+	float angleChange = dt * 5.0f;
 	currentAngle += angleChange;
 	if (currentAngle > 270) {
 		currentAngle -= 360;
@@ -371,11 +445,35 @@ void Renderer::UpdateScene(float dt) {
 	Matrix4 rotMatrix = Matrix4::Rotation(angleChange, Vector3(0, 0, 1));
 	directionalLight->SetPosition(rotMatrix * directionalLight->GetPosition());
 
-	viewMatrix = camera->BuildViewMatrix();
+	//pointLights->SetPosition(Vector3((heightmapSize.x / 2 + 450.0f) + ((sin(dt) * (PI / 180))), pointLights->GetPosition().y, pointLights->GetPosition().z));
+
+	if (lockedCamera) {
+		waitTime += dt;
+		if (currentPoint < cameraPoints.size() && waitTime > 12) {
+
+			Vector3 newPos = LerpVector(camera->GetPosition(), cameraPoints[currentPoint], dt * 1.25f);
+			viewMatrix = Matrix4::BuildViewMatrix(camera->GetPosition(), cameraPoints[currentPoint]);
+			camera->SetPosition(newPos);
+
+			float yaw = LerpFloat(camera->GetYaw(), cameraRotations[currentPoint].x, dt * 5.0f);
+			float pitch = LerpFloat(camera->GetPitch(), cameraRotations[currentPoint].y, dt * 5.0f);
+			float roll = LerpFloat(camera->GetRoll(), cameraRotations[currentPoint].z, dt * 5.0f);
+			camera->SetYaw(yaw);
+			camera->SetPitch(pitch);
+			camera->SetRoll(roll);
+
+			if ((camera->GetPosition() - cameraPoints[currentPoint]).Length() < 5) {
+				currentPoint += 1;
+				waitTime = 0;
+			}
+		}
+	}
+
 	frameFrustum.FromMatrix(projMatrix * viewMatrix);
 
 	root->Update(dt);
 }
+
 
 void Renderer::BuildNodeLists(SceneNode* from) {
 	if (frameFrustum.InsideFrustum(*from)) {
@@ -437,6 +535,7 @@ void Renderer::DrawNode(SceneNode* n) {
 	}
 }
 
+// Sends all of the point & spot light sources to the specified shader
 void Renderer::SetShaderLights(Shader* shader) {
 
 	Vector4 lightColour[POINT_LIGHT_NUM];
@@ -500,12 +599,19 @@ void Renderer::SetShaderLights(Shader* shader) {
 void Renderer::RenderScene() {
 	BuildNodeLists(root);
 	SortNodeLists();
+
+	// Draw scene
 	DrawShadowScene();
+
+	// Water buffer methods render the opague nodes of the scene with a deferred lighting pass
 	GenerateRefractionBuffer();
 	GenerateReflectionBuffer();
+
+	// Render whole scene deferred
 	FillBuffers();
 	DeferredLighting();
 	CombineBuffers();
+
 	ClearNodeLists();
 }
 
@@ -519,10 +625,10 @@ void Renderer::DrawSkybox() {
 	glDepthMask(GL_FALSE);
 
 
-	BindShader(shaders[1]);
+	BindShader(skyboxShader);
 
-	glUniform1f(glGetUniformLocation(shaders[1]->GetProgram(), "dayAngle"), currentAngle);
-	glUniform1i(glGetUniformLocation(shaders[1]->GetProgram(), "cubeTex"), 2);
+	glUniform1f(glGetUniformLocation(skyboxShader->GetProgram(), "dayAngle"), currentAngle);
+	glUniform1i(glGetUniformLocation(skyboxShader->GetProgram(), "cubeTex"), 2);
 	glActiveTexture(GL_TEXTURE2);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, textures[2]);
 
@@ -547,7 +653,7 @@ void Renderer::FillBuffers() {
 }
 
 void Renderer::DrawDirectionalLight() {
-	glBindFramebuffer(GL_FRAMEBUFFER, pointLightFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, deferredLightFBO);
 	BindShader(directionallightShader);
 
 	glClearColor(0, 0, 0, 1);
@@ -608,7 +714,7 @@ void Renderer::DrawDirectionalLight() {
 }
 
 void Renderer::DrawPointLights() {
-	glBindFramebuffer(GL_FRAMEBUFFER, pointLightFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, deferredLightFBO);
 	BindShader(pointlightShader);
 
 	glBlendFunc(GL_ONE, GL_ONE);
@@ -671,7 +777,7 @@ void Renderer::DrawPointLights() {
 }
 
 void Renderer::DrawSpotLights() {
-	glBindFramebuffer(GL_FRAMEBUFFER, pointLightFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, deferredLightFBO);
 	BindShader(spotlightShader);
 
 	glBlendFunc(GL_ONE, GL_ONE);

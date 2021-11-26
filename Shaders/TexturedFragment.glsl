@@ -1,6 +1,6 @@
 #version 330 core
 uniform  sampler2D  diffuseTex;
-
+uniform  sampler2D  bumpTex;
 in  Vertex    {
 	vec2  texCoord;
 	vec3 normal;
